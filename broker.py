@@ -7,6 +7,14 @@ from order import Order
 
 """
 Exchange Broker 
+
+handles balances and transactions
+exports BrokerApi
+
+BrokerAPI
+
+Exchange agnostic standard set of API functions
+
 """
 
 class BrokerAPI(object):
@@ -35,18 +43,12 @@ class Broker (object) :
         self.strategy = None            # :: Strategy
     
 
-    ######## Public Broker API ########
+    ######## Public Broker API functions ########
+    def API():
+        return BrokerAPI(self)
 
-    def start():
-        """ start broker (new thread?) """
-        return self
-
-    def stop():
-        """ stop running broker. """
-        pass
-    
     def sell ( self, price, volume, pair=None ):
-        """ Sell :volume: of :crypto: at :price:."""
+        """ Limit Sell :volume: of :crypto: at :price:."""
         if pair is None: pair = self.default_pair
         order = Order.limit_sell(pair, volume, price)
         order.orderid = uuid.uuid4()
@@ -54,7 +56,7 @@ class Broker (object) :
         return order
 
     def buy ( self, price, volume, pair=None ):
-        """ Buy :volume: of :crypto: at :price:."""
+        """ Limit Buy :volume: of :crypto: at :price:."""
         if pair is None: pair = self.default_pair
         order = Order.limit_buy(pair, volume, price)
         order.orderid = uuid.uuid4()
@@ -77,11 +79,24 @@ class Broker (object) :
         self.orders[order.orderid] = order
         return order
 
-    def ticker ( self, pair=None):
-        pass
+    def current_price( self, pair=None):
+        if pair is None: pair = self.default_pair
+        return self.current_price
 
     def orders(self):
+        """Return Orders object"""
         return self.orders
+
+    def supported_pairs():
+        """
+        Returns list of supported pairs
+        Must be implemented in the exact class
+        """
+        pass
+
+    def balance():
+        """Get current balance"""
+        return self.balance
 
 
 class RealBroker( Broker ):
