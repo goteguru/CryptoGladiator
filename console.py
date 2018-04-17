@@ -9,6 +9,7 @@ api_key = config.get("Bitstamp", "api_key")
 api_secret = config.get("Bitstamp", "api_secret")
 user = config.get("Bitstamp", "user")
 
+# dict(config.items("Bitstamp"))
 class CryptoGladiator(cmd.Cmd) :
     version = 'v0.01 beta'
     intro = "CryptoBoxer %s. I'm waiting for you command."%version
@@ -62,6 +63,11 @@ class CryptoGladiator(cmd.Cmd) :
         for p in self._get_pairs(): 
             print( "{name:>8} {url_symbol:>8} {description}".format(**p) ) 
 
+    def do_status(self,arg):
+        '''Report current console status.'''
+        print("Xchange: Bitstamp")
+        self.report(self.api.balance())
+
     def do_balance(self,arg):
         "Active ballance of the account"
         balance = self.api.account_balance(base=None, quote=None)
@@ -69,12 +75,16 @@ class CryptoGladiator(cmd.Cmd) :
 
     def do_transactions(self,arg):
         "Show my transactions"
-        transactions = self.api.user_transactions()
-        self.table(transactions)
+        raw = self.api.user_transactions()
+        transactions = [ s for s in raw if s['type']=='2' ]
+        #self.table(transactions)
+        for l in transactions : 
+            print(l)
     
     def do_orders(self,arg):
         "Show Orders"
-        orders = self.api.open_orders()
+        base, quote = arg.strip().split("/")
+        orders = self.api.open_orders(base, quote)
         self.table(orders)
     
     def do_bids(self,arg):

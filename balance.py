@@ -68,13 +68,6 @@ class Balance(_CurrencyContainer):
     def __add__(self, other):
         res = self.copy()
         w = res._container
-        for k,val in other._container.items():
-            w[k] = val + w[k] if k in w else val
-        return res
-        
-    def __add__(self, other):
-        res = self.copy()
-        w = res._container
         if type(other) is Balance:
             for k,val in other._container.items():
                 w[k] = val + w[k] if k in w else val

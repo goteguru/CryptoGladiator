@@ -6,19 +6,31 @@ from marketarchive import MarketArchive as Archive
 from order import Order
 
 """
-Exchange Broker 
+Error classes
+-----------------
+"""
+class Error(Exception):
+    pass
 
-handles balances and transactions
+class ConfigError(Error):
+    pass
+"""
+
+Exchange Broker 
+-----------------
+
+Handles balances and transactions,
 exports BrokerApi
 
 BrokerAPI
+------------
 
 Exchange agnostic standard set of API functions
 
 """
 
 class BrokerAPI(object):
-    """ Public Broker API """
+    """ Public Broker API exposed to Strategies """
     def __init__(self,broker):
         """export broker public api"""
         self.sell = broker.sell
@@ -72,7 +84,7 @@ class Broker (object) :
         return order
 
     def market_buy ( self, volume, pair=None ):
-        """ Market (immediate) buy :volume: of :crypto: around :price:."""
+        """ Market (immediate) buy <volume> of <crypto> around <price>."""
         if pair is None: pair = self.default_pair
         order = Order.market_buy(pair, volume)
         order.orderid = uuid.uuid4()
@@ -89,7 +101,7 @@ class Broker (object) :
 
     def supported_pairs():
         """
-        Returns list of supported pairs
+        Returns set of supported pairs
         Must be implemented in the exact class
         """
         pass
@@ -98,6 +110,9 @@ class Broker (object) :
         """Get current balance"""
         return self.balance
 
+    def reserved():
+        """Get reserved balance"""
+        return self.reserved
 
 class RealBroker( Broker ):
 
