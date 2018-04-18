@@ -14,6 +14,9 @@ class Error(Exception):
 
 class ConfigError(Error):
     pass
+
+class OrderNotFound(Error):
+    pass
 """
 
 Exchange Broker 
@@ -52,7 +55,7 @@ class Broker (object) :
         self.balance = Balance()
         self.orders = []            # dictionary { c_pair, type, volume, price }
         self.transactions = []
-        self.strategy = None            # :: Strategy
+        self.strategy = None            # Default strategy :: Strategy
     
 
     ######## Public Broker API functions ########
@@ -62,6 +65,81 @@ class Broker (object) :
     def sell ( self, price, volume, pair=None ):
         """ Limit Sell :volume: of :crypto: at :price:."""
         if pair is None: pair = self.default_pair
+        order = Order.limit_sell(pair, volume, price)
+        self.orders[order.orderid] = order
+        return order
+
+    def buy ( self, price, volume, pair=None ):
+        """ Limit Buy :volume: of :crypto: at :price:."""
+        if pair is None: pair = self.default_pair
+        order = Order.limit_buy(pair, volume, price)
+        self.orders[order.orderid] = order
+        return order
+
+    def market_sell ( self, volume, pair=None ):
+        """ Market (immediate) sell :volume: of :crypto: around :price:."""
+        if pair is None: pair = self.default_pair
+        order = Order.market_sell(pair, volume)
+        order.orderid = uuid.uuid4()
+        self.orders[order.orderid] = order
+        return order
+
+    def market_buy ( self, volume, pair=None ):
+        """ Market (immediate) buy <volume> of <crypto> around <price>."""
+        if pair is None: pair = self.default_pair
+        order = Order.market_buy(pair, volume)
+        order.orderid = uuid.uuid4()
+        self.orders[order.orderid] = order
+        return order
+
+    def current_price( self, pair=None):
+        if pair is None: pair = self.default_pair
+        return self.current_price
+
+    def orders(self):
+        """Return Orders object"""
+        return self.orders
+
+    def update_order(self, orderid):
+        """
+        Update order status (self.orders)
+        Must be implemented in the exact class
+        """
+        except NotImplemented()
+
+    def update_orders(self):
+        for o in self.orders:
+            if o.status in [ OrderSatus.Pending, OrderStatus.Open ]: 
+                self.update_order(self, o)
+    
+    def supported_pairs():
+        """
+        Returns set of supported pairs
+        Must be implemented in the exact class
+        """
+        except NotImplemented()
+
+    def balance():
+        """Get current balance"""
+        return self.balance
+
+    def reserved():
+        """Get reserved balance"""
+        return self.reserved
+
+class RealBroker( Broker ):
+
+    def update_balance():
+        pass
+
+    def update_comission():
+        pass
+
+class TestBroker( Broker ):
+    lag_time = 0
+
+    def sell ( self, price, volume, pair=None ):
+        Broker.__init__(self,price,volume,pair)
         order = Order.limit_sell(pair, volume, price)
         order.orderid = uuid.uuid4()
         self.orders[order.orderid] = order
@@ -90,40 +168,6 @@ class Broker (object) :
         order.orderid = uuid.uuid4()
         self.orders[order.orderid] = order
         return order
-
-    def current_price( self, pair=None):
-        if pair is None: pair = self.default_pair
-        return self.current_price
-
-    def orders(self):
-        """Return Orders object"""
-        return self.orders
-
-    def supported_pairs():
-        """
-        Returns set of supported pairs
-        Must be implemented in the exact class
-        """
-        pass
-
-    def balance():
-        """Get current balance"""
-        return self.balance
-
-    def reserved():
-        """Get reserved balance"""
-        return self.reserved
-
-class RealBroker( Broker ):
-
-    def update_balance():
-        pass
-
-    def update_comission():
-        pass
-
-class TestBroker( Broker ):
-    lag_time = 0
 
 
 if __name__ == "__main__":

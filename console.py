@@ -63,10 +63,6 @@ class CryptoGladiator(cmd.Cmd) :
         for p in self._get_pairs(): 
             print( "{name:>8} {url_symbol:>8} {description}".format(**p) ) 
 
-    def do_status(self,arg):
-        '''Report current console status.'''
-        print("Xchange: Bitstamp")
-        self.report(self.api.balance())
 
     def do_balance(self,arg):
         "Active ballance of the account"
@@ -87,6 +83,15 @@ class CryptoGladiator(cmd.Cmd) :
         orders = self.api.open_orders(base, quote)
         self.table(orders)
     
+    def do_order(self,arg):
+        '''Report single order '''
+        try:
+            order = self.api.order_status(arg)
+        except client.BitstampError as e :
+            print(type(e),":",e)
+        else: 
+            self.report(order)
+    
     def do_bids(self,arg):
         "Show (relevant) bids"
         lastprice = float(self.api.ticker()['last'])
@@ -95,8 +100,8 @@ class CryptoGladiator(cmd.Cmd) :
         print(okbids)
 
     def report(self,d):
-        for key, value in d.items():
-            print( "%s\t: %s"%(key,value))
+        for k,v in d.items():
+            print( "{key:>16}:{value!s:>16}".format(key=k,value=v))
     
     def table(self,table):
         if len(table) == 0 :
