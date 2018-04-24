@@ -1,15 +1,14 @@
-from bitstamp import client 
+from bitstamp import client
 from .broker import RealBroker
 from .order import OrderStatus, Order
 
-""" 
+"""
 Bitstamp exchange Broker implementation
 """
 
 class Bitstamp():
     name = "Bitstamp"
-    
-    
+
 class RealBitstamp(RealBroker,Bitstamp):
     def __init__(self, **auth):
         self.connected = True
@@ -18,7 +17,7 @@ class RealBitstamp(RealBroker,Bitstamp):
             self.connect(**auth)
         except:
             self.connected = False
-        
+
     def connect(self, **auth):
         """ auth_params = {username:<username>, key:<apikey>, secret:<apisecret>}"""
         if 'username'   not in auth: raise broker.ConfigError("username is mandatory.")
@@ -41,7 +40,7 @@ class RealBitstamp(RealBroker,Bitstamp):
         raw = self.bitstamp.user_transactions()
         transactions = [ s for s in raw if s['type']=='2' ]
         #self.table(transactions)
-        for l in transactions : 
+        for l in transactions :
             print(l)
 
     def update_balance(self):
@@ -49,7 +48,7 @@ class RealBitstamp(RealBroker,Bitstamp):
         self.balance = Balance(
         balance = self.bitstamp.account_balance(base=None, quote=None)
         self.report(balance)
-    
+
     def update_order(self, order):
         '''update order'''
 
