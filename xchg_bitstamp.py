@@ -1,6 +1,8 @@
-from bitstamp import client
-from .broker import RealBroker
+from bitstamp import client, BitstampError 
+from requests import HTTPError
+from .broker import RealBroker, NotConnectedError, OrderNotFoundError
 from .order import OrderStatus, Order
+from .balance import Balance
 
 """
 Bitstamp exchange Broker implementation
@@ -11,23 +13,33 @@ class Bitstamp():
 
 class RealBitstamp(RealBroker,Bitstamp):
     def __init__(self, **auth):
-        self.connected = True
         self.trading_pairs = set()
-        try:
-            self.connect(**auth)
-        except:
-            self.connected = False
-
+        self.connect(**auth)
+        
     def connect(self, **auth):
-        """ auth_params = {username:<username>, key:<apikey>, secret:<apisecret>}"""
-        if 'username'   not in auth: raise broker.ConfigError("username is mandatory.")
-        if 'key'        not in auth: raise broker.ConfigError("key is mandatory.")
-        if 'secret'     not in auth: raise broker.ConfigError("secret is mandatory.")
-        self.bitstamp = client.Trading(**auth)
-        self._get_supported_pairs()
+        """ auth_params = 
+            {
+            username:<username>, 
+            key:<apikey>, 
+            secret:<apisecret>
+            }
+        """
+
+        self.connected = False
+        try:
+            if 'username'   not in auth: raise AuthError("Username is mandatory.")
+            if 'key'        not in auth: raise AuthError("Key is mandatory.")
+            if 'secret'     not in auth: raise AuthError("Secret is mandatory.")
+            self.bitstamp = client.Trading(**auth)
+            self._get_supported_pairs()
+            self.connected = True
+        except ValueError, BitstampError, HTTPError as e:
+            self.status = str(e)
 
     def _get_supported_pairs(self):
         '''Load trading pairs'''
+
+        if not self.connected: raise NotConnectedError
         pairs = filter(lambda r: r['trading'] == "Enabled", self.bitstamp.trading_pairs_info())
         self.trading_pairs = { TradingPair(p['name']) for p in pairs }
 
@@ -39,18 +51,20 @@ class RealBitstamp(RealBroker,Bitstamp):
         '''Show my transactions'''
         raw = self.bitstamp.user_transactions()
         transactions = [ s for s in raw if s['type']=='2' ]
-        #self.table(transactions)
-        for l in transactions :
+        for l in transactions : 
             print(l)
 
     def update_balance(self):
         '''Update balance info from server'''
-        self.balance = Balance(
-        balance = self.bitstamp.account_balance(base=None, quote=None)
+        if not self.connected: raise NotConnectedError
+        self.balance = Balance()
+        raw = self.bitstamp.account_balance(base=None, quote=None)
+
         self.report(balance)
 
     def update_order(self, order):
         '''update order'''
+        if not self.connected: raise NotConnectedError
 
         if type(order) is str :
             try:
