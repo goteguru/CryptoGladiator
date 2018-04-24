@@ -1,5 +1,5 @@
 from bitstamp import client 
-from .broker import RealBroker
+from .broker import RealBroker, Broker
 from .order import OrderStatus, Order
 
 """ 
@@ -21,9 +21,9 @@ class RealBitstamp(RealBroker,Bitstamp):
         
     def connect(self, **auth):
         """ auth_params = {username:<username>, key:<apikey>, secret:<apisecret>}"""
-        if 'username'   not in auth: raise broker.ConfigError("username is mandatory.")
-        if 'key'        not in auth: raise broker.ConfigError("key is mandatory.")
-        if 'secret'     not in auth: raise broker.ConfigError("secret is mandatory.")
+        if 'username'   not in auth: raise Broker.ConfigError("username is mandatory.")
+        if 'key'        not in auth: raise Broker.ConfigError("key is mandatory.")
+        if 'secret'     not in auth: raise Broker.ConfigError("secret is mandatory.")
         self.bitstamp = client.Trading(**auth)
         self._get_supported_pairs()
 
@@ -36,19 +36,18 @@ class RealBitstamp(RealBroker,Bitstamp):
         '''Return trading pairs'''
         return  self.trading_pairs
 
-    def transactions(self):
-        '''Show my transactions'''
+    def transactions(self, ):
+        '''returns recent transactions'''
         raw = self.bitstamp.user_transactions()
-        transactions = [ s for s in raw if s['type']=='2' ]
-        #self.table(transactions)
-        for l in transactions : 
-            print(l)
+        return [ s for s in raw if s['type']=='2' ]
 
     def update_balance(self):
-        '''Update balance info from server'''
-        self.balance = Balance(
-        balance = self.bitstamp.account_balance(base=None, quote=None)
-        self.report(balance)
+        '''Update balance info from the server'''
+        response = self.bitstamp.account_balance(base=None, quote=None)
+        fx = "_balance"
+        self.balance = Balance({l[:-fx]:v for l,v in response.items() if l.endswith(fx)})
+                
+
     
     def update_order(self, order):
         '''update order'''
@@ -64,14 +63,19 @@ class RealBitstamp(RealBroker,Bitstamp):
         except client.BitstampError as e:
             order.status = OrderStatus.Removed
         else:
+            trans = {
+                'In Queue': OrderStatus.Pending,
+                'Open':     OrderStatus.Open,
+                'Finished': OrderStatus.Closed,
+            }
             order.extra = result.transactions
-            if result.status is 'In Queue':
-                order.status = OrderStatus.Pending
-            elif result.status is 'Open':
-                order.status = OrderStatus.Open
-            elif result.status is 'Finished':
-                order.status = OrderStatus.Closed
-            #TODO: összeadni a transaction mező elemeit
+            order.status = trans[result.status]
+
+            # sum of base transactions
+            base = order.pair.base.url_form()
+            order.filled = sum [x[base] for x in result.transactions]
+        return order    
+
 
 
 class TestBitstamp(TestBroker,Bitstamp):

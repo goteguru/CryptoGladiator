@@ -75,7 +75,7 @@ class Balance(_CurrencyContainer):
         elif type(other) is BalanceDelta:
             for c,x in other._container.items(): 
                 w[c] = w[c] + x if c in w else x
-                if w[c]<0 : raise Exception("Balance can not be negative.")
+                if w[c]<0 : raise ValueError("Balance can not be negative.")
             return res
         else:
             raise TypeError("Only Balance or BalanceDelta can be added")
@@ -86,7 +86,6 @@ class Balance(_CurrencyContainer):
         balance - balance -> delta
         balance - delta -> balance
         """
-
         if type(other) is Balance:
             w = {}
             a , b = self._container , other._container
@@ -100,6 +99,10 @@ class Balance(_CurrencyContainer):
             return self + other*-1
         else:
             raise TypeError("Only Balance or BalanceDelta can be subtracted.")
+
+    def add(self, currency, volume):
+        self = self + Balance({currency:volume})
+        return self
 
 
 
@@ -117,6 +120,7 @@ if __name__ =="__main__" :
     assert c==d
     assert b+c==s
     assert d+d1 == Balance({ETH:44, LTC:15, GNT:22, EUR:12})
+    assert d.add(ETH,10) == Balance({ETH:32, EUR:12, BTC:0})
 
     x,y = s.split(d1)
     assert x == Balance({ETH:22, EUR:0, GNT:0})

@@ -4,40 +4,40 @@ class TradingPair(object):
 
     """Trading Pair implementation"""
     
-    first = ''
-    second = ''
+    base = ''
+    quote = ''
     uniqid = ''
 
-    def __init__ (self, first, second=None ):
-        if second is None: 
-            if isinstance(first,TradingPair) :
-                self.first = first.first
-                self.second = first.second
-            elif isinstance(first,str) : 
-                self.from_ticker(first)
+    def __init__ (self, base, quote=None ):
+        if quote is None: 
+            if isinstance(base,TradingPair) :
+                self.base = base.base
+                self.quote = base.quote
+            elif isinstance(base,str) : 
+                self.from_ticker(base)
             else:
                 raise ValueError( "Must be currency pair or str")
         else: 
-            if type(first) is str : first = Currency(first)
-            if type(second) is str : second = Currency(second)
-            if not isinstance( first, Currency) or not isinstance(second,Currency): 
-                raise TypeError("Pair member must be Currency or str not (%s,%s)"%(type(first),type(second)))
-            self.first = first
-            self.second = second
+            if type(base) is str : base = Currency(base)
+            if type(quote) is str : quote = Currency(quote)
+            if not isinstance( base, Currency) or not isinstance(quote,Currency): 
+                raise TypeError("Pair member must be Currency or str not (%s,%s)"%(type(base),type(quote)))
+            self.base = base
+            self.quote = quote
 
         self.uniqid = self.ticker()
 
     def ticker(self):
-        return self.first.ticker + "/" + self.second.ticker
+        return self.base.ticker + "/" + self.quote.ticker
 
     def from_ticker(self,s):
         if "/" not in s : raise ValueError("Invalid pair format.")
         a,b = s.upper().split("/")
-        self.first = Currency(a)
-        self.second = Currency(b)
+        self.base = Currency(a)
+        self.quote = Currency(b)
 
     def url_form(self):
-        return (self.first.url_form() + self.second.url_form()).lower()
+        return (self.base.url_form() + self.quote.url_form()).lower()
     
     def __repr__(self): return self.ticker()
     def __str__(self): return self.__repr__(self)

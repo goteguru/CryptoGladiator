@@ -13,7 +13,24 @@ class OrderStatus:
     Failed  = "Failed"  # Order was not accepted by the broker
     Removed = "Removed" # Order has been removed without effect (cancelled)
 
+class OrderType: # Order direction (buy/sell)
+    Sell = "Sell" 
+    Buy  = "Buy"    
+
 class Order():
+    """ Order object.
+    Properties :
+    - status :: OrderStatus
+    - type :: OrderType 
+    - volume ->  maximum volume 
+    - filled ->  filled volume
+    - pair :: TradingPair
+    - orderid -> uniq identifier
+    - timestamps = dictionary of timestamp log { "create":<datetime>,... }
+    callbacks:
+    - on_close 
+    - on_partial 
+    """
     def market_buy(*p,**args):
         return MarketOrder("buy",*p, **args)
     def market_sell(*p,**args):
@@ -21,7 +38,7 @@ class Order():
     def limit_buy(*p,**args):
         return LimitOrder("buy",*p, **args)
     def limit_sell(*p,**args):
-        return LimitOrder("buy",*p,**args)
+        return LimitOrder("sell",*p,**args)
 
     def __init__(self, otype, tradingpair,  volume):
         self.type = otype
