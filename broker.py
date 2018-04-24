@@ -9,13 +9,16 @@ from order import Order
 Error classes
 -----------------
 """
-class Error(Exception):
+class BrokerError(Exception):
     pass
 
-class ConfigError(Error):
+class AuthError(BrokerError):
     pass
 
-class OrderNotFound(Error):
+class OrderNotFoundError(BrokerError):
+    pass
+
+class NotConnectedError(BrokerError):
     pass
 """
 
