@@ -1,4 +1,4 @@
-from bitstamp import client, BitstampError 
+from bitstamp import client, BitstampError
 from requests import HTTPError
 from .broker import RealBroker, NotConnectedError, OrderNotFoundError
 from .order import OrderStatus, Order
@@ -12,15 +12,18 @@ class Bitstamp():
     name = "Bitstamp"
 
 class RealBitstamp(RealBroker,Bitstamp):
+    max_requests_per_frame = 600
+    request_timeframe = 60 # sec
+
     def __init__(self, **auth):
         self.trading_pairs = set()
         self.connect(**auth)
-        
+
     def connect(self, **auth):
-        """ auth_params = 
+        """ auth_params =
             {
-            username:<username>, 
-            key:<apikey>, 
+            username:<username>,
+            key:<apikey>,
             secret:<apisecret>
             }
         """
@@ -61,7 +64,7 @@ class RealBitstamp(RealBroker,Bitstamp):
         self.balance = Balance(rawbal)
 
     def update_order(self, order):
-        '''update order'''
+        '''sync order info with bitstamp'''
         if not self.connected: raise NotConnectedError
 
         if type(order) is str :
@@ -74,20 +77,23 @@ class RealBitstamp(RealBroker,Bitstamp):
             result = self.bitstamp.order_status(order_id)
         except client.BitstampError as e:
             order.status = OrderStatus.Removed
-        else:
-            trans = {
-                'In Queue': OrderStatus.Pending,
-                'Open':     OrderStatus.Open,
-                'Finished': OrderStatus.Closed,
-            }
-            order.extra = result.transactions
-            order.status = trans[result.status]
+            return order
 
-            # sum of base transactions
-            base = order.pair.base.url_form()
-            order.filled = sum [x[base] for x in result.transactions]
-        return order    
+        translate = {
+            'In Queue': OrderStatus.Pending,
+            'Open':     OrderStatus.Open,
+            'Finished': OrderStatus.Closed,
+        }
+        order.extra = result.transactions
+        try:
+            order.status = translate[result.status]
+        except KeyErrror:
+            pass
 
+        # sum of base transactions
+        base = order.pair.base.url_form()
+        order.filled = sum [x[base] for x in result.transactions]
+        return order
 
 
 class TestBitstamp(TestBroker,Bitstamp):

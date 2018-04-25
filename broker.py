@@ -1,7 +1,7 @@
 import numpy
 import uuid
 from balance import Balance
-from tradingpair import TradingPair 
+from tradingpair import TradingPair
 from marketarchive import MarketArchive as Archive
 from order import Order
 
@@ -22,7 +22,7 @@ class NotConnectedError(BrokerError):
     pass
 """
 
-Exchange Broker 
+Exchange Broker
 -----------------
 
 Handles balances and transactions,
@@ -45,13 +45,13 @@ class BrokerAPI(object):
         self.market_sell = broker.market_sell
         self.ticker = broker.ticker
         self.orders = broker.orders
-    
+
 class Broker (object) :
     """Base Broker API exposed to algos"""
     exchange = "unknown"
     market = None   # :: Archive
     comission = 0
-    
+
     def __init__ ( self ):
         """Create new broker"""
         self.default_pair = TradingPair("btc/usd")
@@ -59,7 +59,7 @@ class Broker (object) :
         self.orders = []            # dictionary { c_pair, type, volume, price }
         self.transactions = []
         self.strategy = None            # Default strategy :: Strategy
-    
+
 
     ######## Public Broker API functions ########
     def API():
@@ -112,9 +112,9 @@ class Broker (object) :
 
     def update_orders(self):
         for o in self.orders:
-            if o.status in [ OrderSatus.Pending, OrderStatus.Open ]: 
+            if o.status in [ OrderSatus.Pending, OrderStatus.Open ]:
                 self.update_order(self, o)
-    
+
     def supported_pairs():
         """
         Returns set of supported pairs
@@ -133,10 +133,13 @@ class Broker (object) :
 class RealBroker( Broker ):
 
     def update_balance():
-        pass
+        raise NotImplementedError
+
+    def update_order(order):
+        raise NotImplementedError
 
     def update_comission():
-        pass
+        raise NotImplementedError
 
 class TestBroker( Broker ):
     lag_time = 0
@@ -179,7 +182,3 @@ if __name__ == "__main__":
     t.sell(123,volume=10000)
     t.buy(800000,volume=1)
     t.market_sell(23)
-
-    
-    
-
