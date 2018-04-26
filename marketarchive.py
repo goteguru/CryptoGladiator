@@ -64,7 +64,6 @@ class MarketArchive(object) :
         self.archive['uid'] = np.nan # set uniq id column
 
         
-
     def load(self,fn=None):
         if fn == None : fn = self.persistent 
         self.archive = pd.read_hdf( fn, self.marketid() )
@@ -90,6 +89,11 @@ class MarketArchive(object) :
             return
         newline = [price, volume, uid]
         self.archive.loc[pd.Timestamp(time)] = newline
+
+# TODO: TEST IT
+    def last_update(self):
+        """timestamp of the most recent available data"""
+        return self.archive['ts'][-1:]
 
         
     ##### Archive indicators #####

@@ -12,16 +12,12 @@ class OrderStatus:
     Closed  = "Closed"  # Order has been closed
     Failed  = "Failed"  # Order was not accepted by the broker
     Removed = "Removed" # Order has been removed without effect (cancelled)
-
-class OrderType: # Order direction (buy/sell)
-    Sell = "Sell" 
-    Buy  = "Buy"    
+    Unknown = "Unknown" # Unknown status (possible exchange error?)
 
 class Order():
     """ Order object.
     Properties :
     - status :: OrderStatus
-    - type :: OrderType 
     - volume ->  maximum volume 
     - filled ->  filled volume
     - pair :: TradingPair
@@ -31,22 +27,17 @@ class Order():
     - on_close 
     - on_partial 
     """
-    def market_buy(*p,**args):
-        return MarketOrder("buy",*p, **args)
-    def market_sell(*p,**args):
-        return MarketOrder("sell",*p, **args)
-    def limit_buy(*p,**args):
-        return LimitOrder("buy",*p, **args)
-    def limit_sell(*p,**args):
-        return LimitOrder("sell",*p,**args)
 
-    def __init__(self, otype, tradingpair,  volume):
+    def __init__(self, otype, tradingpair,  volume, order_id = None):
         self.type = otype
         self.volume = volume
         self.pair = TradingPair(tradingpair)
         self.status = OrderStatus.Pending
-        self.orderid = uuid.uuid4()
         self.timestamps = { "create":datetime.now() }
+        if order_id is None:
+            self.order_id = uuid.uuid4()
+        else:
+            self.order_id = order_id
         # action callbacks
         self.on_close = None
         self.on_partial = None
@@ -67,8 +58,8 @@ class Order():
     
 
 class LimitOrder(Order):
-    def __init__(self, otype, tradingpair,  volume, price):
-        super(self).__init__(otype, tradingpair, volume)
+    def __init__(self, tradingpair,  volume, price):
+        super().__init__(otype, tradingpair, volume)
         self.filled = 0
         self.price = price
 
@@ -87,7 +78,8 @@ class LimitOrder(Order):
 
 
 class MarketOrder(Order):
-    def __init__(self, otype, tradingpair,  volume):
+    def __init__(self, tradingpair,  volume):
+        self.price = None
         super().__init__(otype, tradingpair, volume)
 
     def close(self,price):
@@ -96,12 +88,18 @@ class MarketOrder(Order):
         self.price = price
         if not self.on_close is None: self.on_close(self)
 
-if __name__ == "__main__" :
-    o1 = Order.limit_buy("btc/usd", 100, 2)
-    o2 = Order.limit_sell("btc/usd", 100, 2)
-    o3 = Order.market_buy("eth/BTC", volume=1)
 
-    assert(o1 != o2)
+class LimitBuyOrder(LimitOrder): pass
+class LimitSellOrder(LimitOrder): pass
+class MarketBuyOrder(MarketOrder): pass
+class MarketSellOrder(MarketOrder): pass
+
+if __name__ == "__main__" :
+    o1 = LimitBuyOrder("btc/usd", 100, 2)
+    o2 = LimitSellOrder("btc/usd", 100, 2)
+    o3 = MarketBuyOrder("eth/BTC", volume=1)
+
+    assert o1 != o2
     
     o1.fill(20)
     assert(o1.status == OrderStatus.Open)

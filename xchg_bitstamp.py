@@ -1,17 +1,15 @@
 from bitstamp import client, BitstampError
 from requests import HTTPError
-from .broker import RealBroker, NotConnectedError, OrderNotFoundError
 from .order import OrderStatus, Order
 from .balance import Balance
+from .exchange import Exchange, NotConnectedError, OrderError
 
 """
 Bitstamp exchange Broker implementation
 """
 
-class Bitstamp():
+class Bitstamp(Exchange):
     name = "Bitstamp"
-
-class RealBitstamp(RealBroker,Bitstamp):
     max_requests_per_frame = 600
     request_timeframe = 60 # sec
 
@@ -33,7 +31,7 @@ class RealBitstamp(RealBroker,Bitstamp):
             if 'username'   not in auth: raise AuthError("Username is mandatory.")
             if 'key'        not in auth: raise AuthError("Key is mandatory.")
             if 'secret'     not in auth: raise AuthError("Secret is mandatory.")
-            self.bitstamp = client.Trading(**auth)
+            self.api = client.Trading(**auth)
             self._get_supported_pairs()
             self.connected = True
         except ValueError, BitstampError, HTTPError as e:
@@ -43,7 +41,7 @@ class RealBitstamp(RealBroker,Bitstamp):
         '''Load trading pairs'''
 
         if not self.connected: raise NotConnectedError
-        pairs = filter(lambda r: r['trading'] == "Enabled", self.bitstamp.trading_pairs_info())
+        pairs = filter(lambda r: r['trading'] == "Enabled", self.api.trading_pairs_info())
         self.trading_pairs = { TradingPair(p['name']) for p in pairs }
 
     def supported_pairs(self):
@@ -52,30 +50,28 @@ class RealBitstamp(RealBroker,Bitstamp):
 
     def transactions(self, ):
         '''returns recent transactions'''
-        raw = self.bitstamp.user_transactions()
+        raw = self.api.user_transactions()
         return [ s for s in raw if s['type']=='2' ]
 
-    def update_balance(self):
-        '''Update balance info from the server'''
+    def get_balances(self):
+        '''Return balance info from the server'''
         if not self.connected: raise NotConnectedError
-        response = self.bitstamp.account_balance(base=None, quote=None)
-        fx = "_balance"
+        response = self.api.account_balance(base=None, quote=None)
+        fx = "_available"
         rawbal = {l[:-len(fx)]:v for l,v in response.items() if l.endswith(fx)}
-        self.balance = Balance(rawbal)
+        return Balance(rawbal)
 
     def update_order(self, order):
-        '''sync order info with bitstamp'''
+        '''Sync order info with bitstamp'''
         if not self.connected: raise NotConnectedError
-
-        if type(order) is str :
-            try:
-                order = self.orders[order]
-            except:
-                raise ValueError("Order not found.")
+        try:
+            order_id = order.order_id
+        except KeyError:
+            raise OrderError('Invalid Order')
 
         try:
-            result = self.bitstamp.order_status(order_id)
-        except client.BitstampError as e:
+            result = self.api.order_status(order_id)
+        except BitstampError as e:
             order.status = OrderStatus.Removed
             return order
 
@@ -88,7 +84,7 @@ class RealBitstamp(RealBroker,Bitstamp):
         try:
             order.status = translate[result.status]
         except KeyErrror:
-            pass
+            order.status = OrderStatus.Unknown
 
         # sum of base transactions
         base = order.pair.base.url_form()
@@ -96,5 +92,38 @@ class RealBitstamp(RealBroker,Bitstamp):
         return order
 
 
-class TestBitstamp(TestBroker,Bitstamp):
-    pass
+    def execute_order(self, order):
+        """Submit (and execute) order to exchange """
+        base = order.base.url_form()
+        quote = order.quote.url_form()
+        typ = type(order)
+
+        try:
+            if typ is LimitSellOrder:
+                resp = self.api.sell_limit_order(order.volume, order.price, base, quote)
+
+            elif typ is LimitBuyOrder:
+                resp = self.api.buy_limit_order(order.volume, order.price, base, quote)
+
+            elif typ is MarketBuyOrder:
+                resp = self.api.buy_market_order(order.volume, base, quote)
+                order.close(resp['price'])
+
+            elif typ is MarketBuyOrder:
+                resp = self.api.buy_market_order(order.volume, base, quote)
+                order.close(resp['price'])
+
+            else:
+                raise OrderError("Order Type not supported.")
+            
+            order.order_id = resp['id']
+            order.timestamps['submitted'] = resp['datetime']
+            order.price = resp['price']
+            order.volume = resp['amount']
+            return order
+
+        except BitstampError as e:
+            raise OrderError(str(e))
+
+
+

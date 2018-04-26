@@ -3,26 +3,12 @@ import uuid
 from balance import Balance
 from tradingpair import TradingPair
 from marketarchive import MarketArchive as Archive
-from order import Order
+from order import LimitSellOrder, LimitBuyOrder, MarketSellOrder, MarketBuyOrder
+from exchange import Exchange
 
-"""
-Error classes
------------------
-"""
-class BrokerError(Exception):
-    pass
 
-class AuthError(BrokerError):
-    pass
-
-class OrderNotFoundError(BrokerError):
-    pass
-
-class NotConnectedError(BrokerError):
-    pass
-"""
-
-Exchange Broker
+'''
+Broker
 -----------------
 
 Handles balances and transactions,
@@ -33,10 +19,10 @@ BrokerAPI
 
 Exchange agnostic standard set of API functions
 
-"""
+'''
 
-class BrokerAPI(object):
-    """ Public Broker API exposed to Strategies """
+class BrokerAPI:
+    """ Public Broker API wrapper, exposed to Strategies """
     def __init__(self,broker):
         """export broker public api"""
         self.sell = broker.sell
@@ -46,139 +32,97 @@ class BrokerAPI(object):
         self.ticker = broker.ticker
         self.orders = broker.orders
 
-class Broker (object) :
-    """Base Broker API exposed to algos"""
-    exchange = "unknown"
-    market = None   # :: Archive
-    comission = 0
+class Broker:
+    """Main broker object with balance management and exchange tracking"""
+    market = None   # Market archive
 
-    def __init__ ( self ):
+    def __init__(self, exchange):
         """Create new broker"""
+        self.trading_pairs = set()
         self.default_pair = TradingPair("btc/usd")
-        self.balance = Balance()
-        self.orders = []            # dictionary { c_pair, type, volume, price }
-        self.transactions = []
-        self.strategy = None            # Default strategy :: Strategy
+        # balance available for trading
+        self.free_balance = Balance() 
+        # Orders dictionary {orderid: Order}
+        self.orders = {}            
+        # Default strategy :: Strategy
+        self.strategy = None            
+        # exchange agent 
+        self.exchange = exchange
 
-
-    ######## Public Broker API functions ########
     def API():
+        """Export Public API functions"""
         return BrokerAPI(self)
 
-    def sell ( self, price, volume, pair=None ):
-        """ Limit Sell :volume: of :crypto: at :price:."""
-        if pair is None: pair = self.default_pair
-        order = Order.limit_sell(pair, volume, price)
-        self.orders[order.orderid] = order
+    def register_order(self, order):
+        """Register new order to broker"""
+        if order.pair not in self.supported_pairs:
+            raise BrokerError("Pair is not supported.")
+
+        order = self.exchange.execute_order(order)
+        self.orders[order.order_id] = order
         return order
 
-    def buy ( self, price, volume, pair=None ):
-        """ Limit Buy :volume: of :crypto: at :price:."""
+    def sell ( self, volume, price, pair=None ):
+        """ Limit Sell <volume> of <crypto> at <price>."""
         if pair is None: pair = self.default_pair
-        order = Order.limit_buy(pair, volume, price)
-        self.orders[order.orderid] = order
-        return order
+        order = LimitSellOrder(pair, volume, price)
+        return self.register_order(order)
+          
+    def buy ( self, volume, price, pair=None ):
+        """ Limit Buy <volume> of <crypto> at <price>."""
+        if pair is None: pair = self.default_pair
+        order = LimitBuyOrder(pair, volume, price)
+        return self.register_order(order)
 
     def market_sell ( self, volume, pair=None ):
-        """ Market (immediate) sell :volume: of :crypto: around :price:."""
+        """ Market (immediate) sell <volume> of <crypto> around <price>."""
         if pair is None: pair = self.default_pair
-        order = Order.market_sell(pair, volume)
-        order.orderid = uuid.uuid4()
-        self.orders[order.orderid] = order
-        return order
+        order = MarketSellOrder(pair, volume)
+        return self.register_order(order)
 
     def market_buy ( self, volume, pair=None ):
         """ Market (immediate) buy <volume> of <crypto> around <price>."""
         if pair is None: pair = self.default_pair
-        order = Order.market_buy(pair, volume)
-        order.orderid = uuid.uuid4()
-        self.orders[order.orderid] = order
-        return order
+        order = MarketBuyOrder(pair, volume)
+        return self.register_order(order)
 
     def current_price( self, pair=None):
         if pair is None: pair = self.default_pair
-        return self.current_price
+        return self.current_price[pair]
 
-    def orders(self):
+    def get_orders(self):
         """Return Orders object"""
         return self.orders
 
-    def update_order(self, orderid):
-        """
-        Update order status (self.orders)
-        Must be implemented in the exact class
-        """
-        except NotImplemented()
+    def get_supported_pairs():
+        """ Returns set of supported pairs """
+        return self.exchange.supported_pairs
 
-    def update_orders(self):
-        for o in self.orders:
-            if o.status in [ OrderSatus.Pending, OrderStatus.Open ]:
-                self.update_order(self, o)
-
-    def supported_pairs():
-        """
-        Returns set of supported pairs
-        Must be implemented in the exact class
-        """
-        except NotImplemented()
-
-    def balance():
-        """Get current balance"""
+    def get_free_balance(self):
+        """Get current available (free) balance"""
+        return self.balance
+    
+    def get_balance(self):
+        """Get current managed balance"""
         return self.balance
 
-    def reserved():
-        """Get reserved balance"""
-        return self.reserved
+    ### Background tasks ###
 
-class RealBroker( Broker ):
+    def sync(self):
 
-    def update_balance():
-        raise NotImplementedError
+        # sync orders
+        for o in self.orders:
+            if o.status in [ OrderSatus.Pending, OrderStatus.Open ]:
+                self.exchange.update_order(self, o)
 
-    def update_order(order):
-        raise NotImplementedError
+        # sync balance
+        self.balance = self.exchange.get_balance()
 
-    def update_comission():
-        raise NotImplementedError
-
-class TestBroker( Broker ):
-    lag_time = 0
-
-    def sell ( self, price, volume, pair=None ):
-        Broker.__init__(self,price,volume,pair)
-        order = Order.limit_sell(pair, volume, price)
-        order.orderid = uuid.uuid4()
-        self.orders[order.orderid] = order
-        return order
-
-    def buy ( self, price, volume, pair=None ):
-        """ Limit Buy :volume: of :crypto: at :price:."""
-        if pair is None: pair = self.default_pair
-        order = Order.limit_buy(pair, volume, price)
-        order.orderid = uuid.uuid4()
-        self.orders[order.orderid] = order
-        return order
-
-    def market_sell ( self, volume, pair=None ):
-        """ Market (immediate) sell :volume: of :crypto: around :price:."""
-        if pair is None: pair = self.default_pair
-        order = Order.market_sell(pair, volume)
-        order.orderid = uuid.uuid4()
-        self.orders[order.orderid] = order
-        return order
-
-    def market_buy ( self, volume, pair=None ):
-        """ Market (immediate) buy <volume> of <crypto> around <price>."""
-        if pair is None: pair = self.default_pair
-        order = Order.market_buy(pair, volume)
-        order.orderid = uuid.uuid4()
-        self.orders[order.orderid] = order
-        return order
 
 
 if __name__ == "__main__":
 
-    t=TestBroker()
+    t=Broker(TestExchange())
     t.sell(123,volume=10000)
     t.buy(800000,volume=1)
     t.market_sell(23)
