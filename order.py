@@ -57,7 +57,6 @@ class Order():
         if self.on_cancel is not None:
             self.on_cancel(order)
 
-<<<<<<< HEAD
     def _ts(self,txt):
         self.history.append((datetime.now(),txt))
 
@@ -92,7 +91,6 @@ class Order():
 class LimitOrder(Order):
     def __init__(self, tradingpair,  volume, price):
         super().__init__(tradingpair, volume)
-<<<<<<< HEAD
         self.__filled = 0
         self.on_fill = None
         self.price = price
