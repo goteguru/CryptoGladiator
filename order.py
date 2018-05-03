@@ -6,13 +6,15 @@ from tradingpair import TradingPair
 Smart Order class implementation with event callbacks
 """
 
+
 class OrderStatus:
-    Pending = "Pending" # Order submitted but not (yet) accepted by the broker
-    Open    = "Open"    # Order accepted by the broker and active
-    Closed  = "Closed"  # Order has been closed
-    Failed  = "Failed"  # Order was not accepted by the broker
-    Removed = "Removed" # Order has been removed without effect (cancelled)
-    Unknown = "Unknown" # Unknown status (possible exchange error?)
+    Pending = "Pending"  # Order submitted but not (yet) accepted by the broker
+    Open    = "Open"     # Order accepted by the broker and active
+    Closed  = "Closed"   # Order has been closed
+    Failed  = "Failed"   # Order was not accepted by the broker
+    Removed = "Removed"  # Order has been removed without effect (cancelled)
+    Unknown = "Unknown"  # Unknown status (possible exchange error?)
+
 
 class OrderError(RuntimeError):
     pass
@@ -21,28 +23,25 @@ class Order():
     """ Order object.
     Properties :
     - status :: OrderStatus
-    - volume ->  maximum volume 
+    - volume ->  maximum volume
     - filled ->  filled volume
     - pair :: TradingPair
     - order_id -> uniq identifier
     - history = dictionary of timestamp log { "create":<datetime>,... }
     callbacks:
-    - on_close 
-    - on_partial 
+    - on_close
+    - on_partial
     """
 
-    next_order_id = 1
-
-    def __init__(self, tradingpair,  volume):
-        self.__status = OrderStatus.Unknown
-        self.history = []
+    def __init__(self, tradingpair,  volume, order_id=None):
         self.volume = volume
         self.pair = TradingPair(tradingpair)
         self.status = OrderStatus.Pending
-        self.order_id = Order.next_order_id
-        Order.next_order_id += 1
-        self.price = None
-
+        self.timestamps = {"create": datetime.now()}
+        if order_id is None:
+            self.order_id = uuid.uuid4()
+        else:
+            self.order_id = order_id
         # action callbacks
         self.on_close = None
         self.on_partial = None
@@ -58,10 +57,13 @@ class Order():
         if self.on_cancel is not None:
             self.on_cancel(order)
 
+<<<<<<< HEAD
     def _ts(self,txt):
         self.history.append((datetime.now(),txt))
 
-    def __hash__(self):         return self.order_id.__hash__()
+    def __hash__(self):
+        return self.order_id.__hash__()
+
     def __repr__(self):         
         return "<[{id}] {type} {volume} {base} @ {price} {quote} {status}>".format(
                 type = type(self).__name__,
@@ -87,11 +89,10 @@ class Order():
         except TypeError:
             pass
 
-    
-
 class LimitOrder(Order):
     def __init__(self, tradingpair,  volume, price):
         super().__init__(tradingpair, volume)
+<<<<<<< HEAD
         self.__filled = 0
         self.on_fill = None
         self.price = price
@@ -154,8 +155,10 @@ if __name__ == "__main__" :
     l1.filled = 1
 
     teszt = []
+
     def t(o): 
         teszt.append(o)
+
     l1.on_close = t
 
     l1.status = OrderStatus.Closed
@@ -166,6 +169,6 @@ if __name__ == "__main__" :
     m1.close(5555)
     assert m1.status == OrderStatus.Closed
 
-
-
-
+    o3.close(234)
+    assert o3.price == 234
+    assert teszt[0] is o3

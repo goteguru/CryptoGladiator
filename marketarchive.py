@@ -5,13 +5,13 @@
 from tradingpair import TradingPair
 import time, datetime
 import numpy as np
-import pandas as pd 
+import pandas as pd
 
 class MarketException(Exception):
     pass
 
 class MarketArchive(object) :
-    
+
     archives = {}
     persistent = "./data/archive.h5"
 
@@ -23,14 +23,14 @@ class MarketArchive(object) :
     def init(pair, exchange):
         """Factory method returning new or existing market archive"""
         marketid = MarketArchive._make_market_id(pair,exchange)
-        if marketid in MarketArchive.archives: 
+        if marketid in MarketArchive.archives:
             return MarketArchive.archives[marketid]
-        else: 
+        else:
             return MarketArchive(pair,exchange)
 
     def __init__(self, pair, exchange):
         """Initialize archive from default file or create it empty"""
-        if type(pair) is not TradingPair : 
+        if type(pair) is not TradingPair :
             raise MarketException('Archive must be created for some TradingPair.')
         self.pair = pair
         self.exchange =  exchange
@@ -44,7 +44,7 @@ class MarketArchive(object) :
             self.archive.index = ix
         MarketArchive.archives[self.marketid] = self
 
-    def marketid(self): 
+    def marketid(self):
         """Returns readable unique id for the market archive"""
         return MarketArchive._make_market_id(self.pair, self.exchange)
 
@@ -54,18 +54,18 @@ class MarketArchive(object) :
         1315922016,5.800000000000,1.000000000000
         """
         print("loading:",fn)
-        self.archive = pd.read_csv(fn, 
-                names=['ts', 'price', 'volume'] , 
-                index_col=0, engine='c', 
+        self.archive = pd.read_csv(fn,
+                names=['ts', 'price', 'volume'] ,
+                index_col=0, engine='c',
                 header=None
         )
         self.archive.index = pd.to_datetime(self.archive.index, unit='s')
         self.archive.index.freq=pd.tseries.offsets.Second(1) # set 1 sec freq
         self.archive['uid'] = np.nan # set uniq id column
 
-        
+
     def load(self,fn=None):
-        if fn == None : fn = self.persistent 
+        if fn == None : fn = self.persistent
         self.archive = pd.read_hdf( fn, self.marketid() )
 
     def save(self,fn=None):
@@ -74,7 +74,7 @@ class MarketArchive(object) :
 
     def timerange(self, start=0 , end=time.time()):
         return self.archive['ts'][-10:]
-        
+
     def concat(self, df):
         """ append time data """
         # drop unneccessary data
@@ -95,12 +95,12 @@ class MarketArchive(object) :
         """timestamp of the most recent available data"""
         return self.archive['ts'][-1:]
 
-        
+
     ##### Archive indicators #####
 
     def raw(self):
         """ return the raw pandas timestamp indexed DataFrame. Ordered, multiple indexes.
-        dataframe value axis: "price", "volume" 
+        dataframe value axis: "price", "volume"
         """
         return self.archive;
 
@@ -113,7 +113,7 @@ class MarketArchive(object) :
         open_   = s["price"].first()
         volume  = s["volume"].sum()
         m = pd.concat({'low':low,'high':high,'close':close,'open':open_,'volume':volume}, axis=1)
-        return m 
+        return m
 
 # teszt
 if __name__ == "__main__" :
@@ -124,10 +124,3 @@ if __name__ == "__main__" :
     empty = MarketArchive.init(TradingPair(BTC,USD), "masik")
 #    market.loadtxt("./data/bitstampUSD.csv")
 #    market.save()
-
-
-
-    
-
-
-    
