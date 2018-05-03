@@ -1,6 +1,6 @@
-from .broker import NotConnectedError, OrderError
-from .order import OrderStatus, Order
-from .balance import Balance
+from broker import NotConnectedError, OrderError
+from order import OrderStatus, Order
+from balance import Balance
 
 """
 Error classes

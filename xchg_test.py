@@ -33,24 +33,22 @@ class TestExchange(Exchange):
 
         else:
             raise OrderError("Order Type not supported.")
-            
+
         raise NotImplementedError("to be implemented")
-            
+
 
 
     def current_price( self, base, quote):
-        raise NotImplementedError("Must be implemented").
+        raise NotImplementedError("Must be implemented")
 
     def update_order(self, order):
-        raise NotImplementedError("Must be implemented").
+        raise NotImplementedError("Must be implemented")
 
     def supported_pairs(self):
-        raise NotImplementedError("Must be implemented").
+        raise NotImplementedError("Must be implemented")
 
     def get_balance(self):
-        raise NotImplementedError("Must be implemented").
+        raise NotImplementedError("Must be implemented")
 
     def update_comissions(self):
-        raise NotImplementedError
-
-
+        raise NotImplementedError("Should be implemented.")
