@@ -1,18 +1,18 @@
 import numpy
-import uuid
 from balance import Balance
 from tradingpair import TradingPair
 from marketarchive import MarketArchive as Archive
 from order import LimitSellOrder, LimitBuyOrder, MarketSellOrder, MarketBuyOrder
 from exchange import Exchange
 
-
 '''
 Broker
 -----------------
 
-Handles balances and transactions,
-exports BrokerApi
+- handles balances and transactions,
+- handles strategies
+- connect and sync to exchange
+- exports BrokerApi
 
 BrokerAPI
 ------------

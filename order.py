@@ -3,7 +3,7 @@ from datetime import datetime
 from tradingpair import TradingPair
 
 """
-Order class with event callbacks
+Smart Order class implementation with event callbacks
 """
 
 class OrderStatus:
@@ -14,6 +14,9 @@ class OrderStatus:
     Removed = "Removed" # Order has been removed without effect (cancelled)
     Unknown = "Unknown" # Unknown status (possible exchange error?)
 
+class OrderError(RuntimeError):
+    pass
+
 class Order():
     """ Order object.
     Properties :
@@ -21,73 +24,114 @@ class Order():
     - volume ->  maximum volume 
     - filled ->  filled volume
     - pair :: TradingPair
-    - orderid -> uniq identifier
-    - timestamps = dictionary of timestamp log { "create":<datetime>,... }
+    - order_id -> uniq identifier
+    - history = dictionary of timestamp log { "create":<datetime>,... }
     callbacks:
     - on_close 
     - on_partial 
     """
 
-    def __init__(self, otype, tradingpair,  volume, order_id = None):
-        self.type = otype
+    next_order_id = 1
+
+    def __init__(self, tradingpair,  volume):
+        self.__status = OrderStatus.Unknown
+        self.history = []
         self.volume = volume
         self.pair = TradingPair(tradingpair)
         self.status = OrderStatus.Pending
-        self.timestamps = { "create":datetime.now() }
-        if order_id is None:
-            self.order_id = uuid.uuid4()
-        else:
-            self.order_id = order_id
+        self.order_id = Order.next_order_id
+        Order.next_order_id += 1
+        self.price = None
+
         # action callbacks
         self.on_close = None
         self.on_partial = None
+        self.on_cancel = None
+        self._ts("Created")
 
-    def _ts(self,key):
-        self.timestamps[key] = datetime.now()
+    def cancel(self):
+        '''Cancel order'''
+        self.status = OrderStatus.Removed
+        if self.status is OrderStatus.Closed:
+            raise OrderError('Closed Order can not be cancelled.')
 
-    def __eq__(self, other):    return self.orderid == other.orderid
-    def __hash__(self):         return self.orderid.__hash__()
+        if self.on_cancel is not None:
+            self.on_cancel(order)
+
+    def _ts(self,txt):
+        self.history.append((datetime.now(),txt))
+
+    def __hash__(self):         return self.order_id.__hash__()
     def __repr__(self):         
-        return "<{type} {volume} {to} @ {price} {what}>".format(
-                type = self.type,
+        return "<[{id}] {type} {volume} {base} @ {price} {quote} {status}>".format(
+                type = type(self).__name__,
                 volume = self.volume,
-                price = self.price,
-                what = self.pair.second,
-                to = self.pair.first,
+                price = "?" if self.price is None else self.price,
+                base = self.pair.base,
+                quote = self.pair.quote,
+                id = "-" if self.order_id is None else self.order_id,
+                status = self.status,
                 )
+
+    @property
+    def status(self):
+        return self.__status
+
+    @status.setter
+    def status(self,s):
+        if self.__status == s : return 
+        self._ts('Status change: ' + str(s))
+        self.__status = s
+        try:
+            if s is OrderStatus.Closed: self.on_close(self)
+        except TypeError:
+            pass
+
     
 
 class LimitOrder(Order):
     def __init__(self, tradingpair,  volume, price):
-        super().__init__(otype, tradingpair, volume)
-        self.filled = 0
+        super().__init__(tradingpair, volume)
+        self.__filled = 0
+        self.on_fill = None
         self.price = price
 
+    @property
+    def filled(self):
+        return self.__filled
 
-    def fill(self,filled_volume):
-        """ broker calls this method when the order is filled. """
-        self.sub_status = "Partial"
-        self.filled = filled_volume
-        self._ts('filled')
-        if (self.filled < self.volume) :
-            if self.on_partial is not None: self.on_partial(self)
-        else:
-            if not self.on_close is None: self.on_close(self)
-            self.sub_status = "Filled"
-            self.status = "Closed"
+    @filled.setter
+    def filled(self, amount):
+        if self.__filled != amount :
+            self._ts('Filled: ' + str(amount))
+            try:
+                self.on_fill(self)
+            except TypeError:
+                pass
+        if self.volume < amount:
+            raise OrderError('Fill amount can not exceed order quantity.')
+
+        self.__filled = amount
+
+    def __repr__(self):         
+        return "<[{id}] {type} {volume} {base} @ {price} {quote} {status} filled:{filled}>".format(
+                type = type(self).__name__,
+                volume = self.volume,
+                filled = self.filled,
+                price = "?" if self.price is None else self.price,
+                base = self.pair.base,
+                quote = self.pair.quote,
+                id = "-" if self.order_id is None else self.order_id,
+                status = self.status,
+                )
+
+
 
 
 class MarketOrder(Order):
-    def __init__(self, tradingpair,  volume):
-        self.price = None
-        super().__init__(otype, tradingpair, volume)
-
-    def close(self,price):
-        """ broker calls this method when the order is filled. """
+    def close(self, price):
         self.status = OrderStatus.Closed
         self.price = price
-        if not self.on_close is None: self.on_close(self)
-
 
 class LimitBuyOrder(LimitOrder): pass
 class LimitSellOrder(LimitOrder): pass
@@ -95,29 +139,33 @@ class MarketBuyOrder(MarketOrder): pass
 class MarketSellOrder(MarketOrder): pass
 
 if __name__ == "__main__" :
-    o1 = LimitBuyOrder("btc/usd", 100, 2)
-    o2 = LimitSellOrder("btc/usd", 100, 2)
-    o3 = MarketBuyOrder("eth/BTC", volume=1)
+    l1 = LimitBuyOrder("btc/usd", 1, 5000)
+    l2 = LimitSellOrder("btc/usd", 1, 5000)
 
-    assert o1 != o2
-    
-    o1.fill(20)
-    assert(o1.status == OrderStatus.Open)
-    
-    o1.fill(100)
-    assert(o1.status == OrderStatus.Closed )
+    assert l1 != l2
+    assert l1.status == OrderStatus.Pending
 
-    o3.close(234)
-    assert o3.price == 234
+    l1.status = OrderStatus.Open
+    assert l1.status == OrderStatus.Open
+
+    l1.filled = 0.5
+    assert l1.status == OrderStatus.Open 
+    assert l1.filled == 0.5
+    l1.filled = 1
 
     teszt = []
     def t(o): 
-        global teszt
         teszt.append(o)
-    o3.on_close = t
+    l1.on_close = t
 
-    o3.close(234)
-    assert o3.price == 234
-    assert teszt[0] is o3
+    l1.status = OrderStatus.Closed
+    assert teszt[0] is l1
+
+    m1 = MarketBuyOrder("eth/BTC", volume=1)
+    assert m1.status == OrderStatus.Pending
+    m1.close(5555)
+    assert m1.status == OrderStatus.Closed
+
+
 
 

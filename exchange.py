@@ -1,7 +1,3 @@
-from .broker import NotConnectedError, OrderError
-from .order import OrderStatus, Order
-from .balance import Balance
-
 """
 Error classes
 -----------------
@@ -15,20 +11,19 @@ class AuthError(ExchangeError):
 class OrderError(ExchangeError):
     pass
 
-class NotConnectedError(ExchangeError):
-    pass
-
-class ExchangeError(ExchangeError):
-    pass
-
 class Exchange:
     """ Abstract (interface) base class for specific exchange engines """
     supported_pairs = set()
 
-    def execute_order ( self, order ):
+    def execute_order(self, order):
         raise NotImplementedError("Must be implemented")
 
-    def current_price( self, base, quote):
+    def cancel_order(self, order):
+        raise NotImplementedError("Must be implemented")
+
+    def ticker( self, pair):
+        """return most recent price of the pair
+        return {last: 100, bid: 100, ask: 101} """
         raise NotImplementedError("Must be implemented")
 
     def update_order(self, order):
@@ -40,5 +35,5 @@ class Exchange:
     def get_balance(self):
         raise NotImplementedError("Must be implemented")
 
-    def update_comissions(self):
+    def get_comissions(self):
         raise NotImplementedError("Please implement")

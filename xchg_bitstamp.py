@@ -1,8 +1,9 @@
 from bitstamp import client, BitstampError
 from requests import HTTPError
-from .order import OrderStatus, Order
-from .balance import Balance
-from .exchange import Exchange, NotConnectedError, OrderError
+
+from order import OrderStatus, Order
+from balance import Balance
+from exchange import Exchange, AuthError('Not connected'), OrderError
 
 """
 Bitstamp exchange Broker implementation
@@ -40,7 +41,7 @@ class Bitstamp(Exchange):
     def _get_supported_pairs(self):
         '''Load trading pairs'''
 
-        if not self.connected: raise NotConnectedError
+        if not self.connected: raise AuthError('Not connected')
         pairs = filter(lambda r: r['trading'] == "Enabled", self.api.trading_pairs_info())
         self.trading_pairs = { TradingPair(p['name']) for p in pairs }
 
@@ -53,9 +54,9 @@ class Bitstamp(Exchange):
         raw = self.api.user_transactions()
         return [ s for s in raw if s['type']=='2' ]
 
-    def get_balances(self):
+    def get_balance(self):
         '''Return balance info from the server'''
-        if not self.connected: raise NotConnectedError
+        if not self.connected: raise AuthError('Not connected')
         response = self.api.account_balance(base=None, quote=None)
         fx = "_available"
         rawbal = {l[:-len(fx)]:v for l,v in response.items() if l.endswith(fx)}
@@ -63,7 +64,7 @@ class Bitstamp(Exchange):
 
     def update_order(self, order):
         '''Sync order info with bitstamp'''
-        if not self.connected: raise NotConnectedError
+        if not self.connected: raise AuthError('Not connected')
         try:
             order_id = order.order_id
         except KeyError:
@@ -94,8 +95,8 @@ class Bitstamp(Exchange):
 
     def execute_order(self, order):
         """Submit (and execute) order to exchange """
-        base = order.base.url_form()
-        quote = order.quote.url_form()
+        base = order.pair.base.url_form()
+        quote = order.pair.quote.url_form()
         typ = type(order)
 
         try:
@@ -105,8 +106,8 @@ class Bitstamp(Exchange):
             elif typ is LimitBuyOrder:
                 resp = self.api.buy_limit_order(order.volume, order.price, base, quote)
 
-            elif typ is MarketBuyOrder:
-                resp = self.api.buy_market_order(order.volume, base, quote)
+            elif typ is MarketSellOrder:
+                resp = self.api.sell_market_order(order.volume, base, quote)
                 order.close(resp['price'])
 
             elif typ is MarketBuyOrder:
@@ -118,12 +119,28 @@ class Bitstamp(Exchange):
             
             order.order_id = resp['id']
             order.timestamps['submitted'] = resp['datetime']
-            order.price = resp['price']
+            #order.price = resp['price']
             order.volume = resp['amount']
             return order
 
         except BitstampError as e:
             raise OrderError(str(e))
 
+    def cancel_order(self, order):
+        """Cancel order"""
+        try:
+            self.api.cancel_order(order.order_id)
+        except BitstampError as e:
+            raise OrderError(str(e))
+        return order
+        
+    def get_comissions(self):
+        raise NotImplementedError("Please implement")
 
 
+    def ticker(self, pair):
+        """Cancel order"""
+        try:
+            return self.api.ticker(pair.base, pair.quote)
+        except BitstampError as e:
+            raise OrderError(str(e))

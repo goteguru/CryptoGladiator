@@ -20,6 +20,10 @@ class _CurrencyContainer:
             return 0
         return self._container[index]
     
+    def __setitem__(self, index, value):
+        index = Currency(index)
+        self._container[index] = value
+    
     def __eq__(self, other):
         a = { k:v for k,v in other._container.items() if v > 0 }
         b = { k:v for k,v in self._container.items() if v > 0 }
@@ -129,4 +133,6 @@ if __name__ =="__main__" :
     assert s-BalanceDelta({ETH:33, EUR:2}) == BalanceDelta({ETH:0, EUR:10 , USD:88, BTC:0 }) 
     assert s+BalanceDelta({ETH:1, GNT:2}) == Balance({ETH:34, EUR:12, USD:88, GNT:2})
 
+    b['ETH'] = 123
+    assert b['eth'] == 123
         

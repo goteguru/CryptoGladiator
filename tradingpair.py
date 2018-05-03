@@ -40,7 +40,7 @@ class TradingPair(object):
         return (self.base.url_form() + self.quote.url_form()).lower()
     
     def __repr__(self): return self.ticker()
-    def __str__(self): return self.__repr__(self)
+    def __str__(self): return self.__repr__()
     def __eq__(self,other): return self.uniqid == other.uniqid
     def __hash__(self): return self.uniqid.__hash__()
 

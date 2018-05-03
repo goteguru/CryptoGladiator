@@ -2,13 +2,14 @@ from .order import OrderStatus, Order
 from .balance import Balance
 from .exchange import Exchange, NotConnectedError, OrderError
 
-class TestExchange(Exchange):
-    ''' simulate exchange behavior '''
+class RandomExchange(Exchange):
+    ''' Randomized buy/sell. Sumulate exchange behavior for testing purposes. '''
     lag_time = 0
 
-    def __init__(self, starting_balance, market, start_date=0):
+    def __init__(self, starting_balance, market, start_date=0, lag_time=0):
         '''bootstrap exchange with starting balance and market'''
         self.balance = starting_balance
+        self.lag_time=lag_time
         self.supported_pairs = {
                 TradingPair('btc/usd'),
                 TradingPair('eth/usd'),
