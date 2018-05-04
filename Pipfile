@@ -1,0 +1,15 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.python.org/simple"
+verify_ssl = true
+
+[dev-packages]
+pytest = "*"
+python-language-server = "*"
+
+[packages]
+requests = "*"
+bitstampclient = "*"
+
+[requires]
+python_version = "3.6"

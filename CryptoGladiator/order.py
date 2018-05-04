@@ -36,7 +36,8 @@ class Order():
     def __init__(self, tradingpair,  volume, order_id=None):
         self.volume = volume
         self.pair = TradingPair(tradingpair)
-        self.status = OrderStatus.Pending
+        self.__status = OrderStatus.Pending
+        self.history = []
         self.timestamps = {"create": datetime.now()}
         if order_id is None:
             self.order_id = uuid.uuid4()
@@ -167,6 +168,3 @@ if __name__ == "__main__" :
     m1.close(5555)
     assert m1.status == OrderStatus.Closed
 
-    o3.close(234)
-    assert o3.price == 234
-    assert teszt[0] is o3

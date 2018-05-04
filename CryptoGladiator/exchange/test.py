@@ -1,6 +1,6 @@
-from .order import OrderStatus, Order
-from .balance import Balance
-from .exchange import Exchange, NotConnectedError, OrderError
+from order import OrderStatus, Order
+from balance import Balance
+from exchange import Exchange, OrderError
 
 class RandomExchange(Exchange):
     ''' Randomized buy/sell. Sumulate exchange behavior for testing purposes. '''

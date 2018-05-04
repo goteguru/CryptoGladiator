@@ -1,16 +1,16 @@
 from copy import copy
 from random import gauss
 from uuid import uuid4 as uuid
-from datetime import datetime 
+from datetime import datetime
 
 from order import OrderStatus, MarketSellOrder, MarketBuyOrder, LimitSellOrder, LimitBuyOrder
 from balance import Balance
-from exchange import Exchange, OrderError 
+from exchange import ExchangeInterface, OrderError
 from tradingpair import TradingPair
 
 BTCUSD = TradingPair('btc/usd')
 
-class RandomExchange(Exchange):
+class RandomExchange(ExchangeInterface):
     ''' Randomized buy/sell. Simulate exchange behavior for testing purposes. '''
 
     def __init__(self, starting_balance, lag_time=0, max_volume=1.0, price=8000.0):
@@ -22,13 +22,13 @@ class RandomExchange(Exchange):
         self.__last_price = price
         self.max_volume = max_volume
         self.orders = {}
-            
+
     def _update_market(self):
         """update orders (buy and sell) and simulated market"""
         for o in self.orders.values():
 
             if o.status != OrderStatus.Open: continue
-            
+
             print("u:",self.__current_price, o)
             t = type(o)
             if t is LimitBuyOrder and self.__current_price <= o.price:
@@ -41,8 +41,8 @@ class RandomExchange(Exchange):
                 sold = min([needed, self.max_volume])
                 o.filled += sold
                 print("sell:",o)
-            
-            if o.filled == o.volume: 
+
+            if o.filled == o.volume:
                 o.status = OrderStatus.Closed
 
     def change_price(self, amount=None):
@@ -71,20 +71,20 @@ class RandomExchange(Exchange):
         if order.pair not in self._supported_pairs:
             raise OrderError("Unsupported Pair: " + str(order.pair))
 
-        # check cover 
+        # check cover
         typ = type(order)
-        
+
         if order.order_id in self.orders:
             raise OrderError("Order already executed.")
 
         if typ is LimitSellOrder:
-            bbal = self.balance[order.pair.base] 
+            bbal = self.balance[order.pair.base]
             if bbal < order.volume:
                 raise OrderError('Not enough money.')
             order.status = OrderStatus.Open
 
         elif typ is LimitBuyOrder:
-            qbal = self.balance[order.pair.quote] 
+            qbal = self.balance[order.pair.quote]
             if qbal < order.volume * order.price:
                 raise OrderError('Not enough money.')
             order.status = OrderStatus.Open
@@ -101,7 +101,7 @@ class RandomExchange(Exchange):
 
         else:
             raise OrderError("Order Type not supported.")
-            
+
         order.order_id = uuid()
         self.orders[order.order_id] = copy(order)
         return order
@@ -129,7 +129,7 @@ class RandomExchange(Exchange):
 
     def cancel_order(self, order):
         try:
-            del self.orders[order.order_id] 
+            del self.orders[order.order_id]
         except KeyError:
             raise OrderError('No such order.')
 
@@ -140,9 +140,9 @@ class RandomExchange(Exchange):
 if __name__ == "__main__":
     x = RandomExchange(Balance({'BTC':5}), max_volume=1.0, price=8000.0)
     assert x.ticker('btc/usd')['last'] == 8000.0
-    
+
     # test price change
-    x.change_price(-1) 
+    x.change_price(-1)
     ret = x.ticker('btc/usd')
     assert ret['bid'] == 7999.0
     assert ret['last'] == 8000.0
@@ -157,7 +157,7 @@ if __name__ == "__main__":
     ro = x.update_order(o1)
     assert ro.filled == 1.0
     assert ro.status == OrderStatus.Open
-    x.change_price(0) # max_quantity can be used again 
+    x.change_price(0) # max_quantity can be used again
     ro = x.update_order(o1)
     assert ro.filled == 2.0
     assert ro.status == OrderStatus.Closed
@@ -165,8 +165,5 @@ if __name__ == "__main__":
     # test marketorder handling
     o2 = x.execute_order(MarketSellOrder("btc/usd",1))
     assert x.update_order(o2).status == OrderStatus.Closed
-    
+
     assert len(x.orders) == 2
-
-
-

@@ -3,13 +3,13 @@ from requests import HTTPError
 
 from order import OrderStatus, Order
 from balance import Balance
-from exchange import Exchange, AuthError('Not connected'), OrderError
+from exchange.interface import ExchangeInterface, AuthError, OrderError
 
 """
 Bitstamp exchange Broker implementation
 """
 
-class Bitstamp(Exchange):
+class Bitstamp(ExchangeInterface):
     name = "Bitstamp"
     max_requests_per_frame = 600
     request_timeframe = 60 # sec
@@ -35,7 +35,7 @@ class Bitstamp(Exchange):
             self.api = client.Trading(**auth)
             self._get_supported_pairs()
             self.connected = True
-        except ValueError, BitstampError, HTTPError as e:
+        except (ValueError, BitstampError, HTTPError) as e:
             self.status = str(e)
 
     def _get_supported_pairs(self):
@@ -116,7 +116,7 @@ class Bitstamp(Exchange):
 
             else:
                 raise OrderError("Order Type not supported.")
-            
+
             order.order_id = resp['id']
             order.timestamps['submitted'] = resp['datetime']
             #order.price = resp['price']
@@ -133,7 +133,7 @@ class Bitstamp(Exchange):
         except BitstampError as e:
             raise OrderError(str(e))
         return order
-        
+
     def get_comissions(self):
         raise NotImplementedError("Please implement")
 

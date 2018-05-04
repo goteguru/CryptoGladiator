@@ -16,19 +16,19 @@ class TradingPair(object):
             elif isinstance(base,str) : 
                 self.from_ticker(base)
             else:
-                raise ValueError( "Must be currency pair or str")
+                raise ValueError("Must be currency pair or str")
         else: 
             if type(base) is str : base = Currency(base)
             if type(quote) is str : quote = Currency(quote)
             if not isinstance( base, Currency) or not isinstance(quote,Currency): 
-                raise TypeError("Pair member must be Currency or str not (%s,%s)"%(type(base),type(quote)))
+                raise TypeError(f'Pair member must be Currency or str not ({type(base)},{type(quote)})')
             self.base = base
             self.quote = quote
 
         self.uniqid = self.ticker()
 
     def ticker(self):
-        return self.base.ticker + "/" + self.quote.ticker
+        return f"{self.base.ticker}/{self.quote.ticker}"
 
     def from_ticker(self,s):
         if "/" not in s : raise ValueError("Invalid pair format.")

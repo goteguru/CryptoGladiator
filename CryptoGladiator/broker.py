@@ -1,10 +1,13 @@
 from balance import Balance
 from tradingpair import TradingPair
 # from marketarchive import MarketArchive as Archive
-from order import LimitSellOrder, LimitBuyOrder,\
-                  MarketSellOrder, MarketBuyOrder
+from order import (
+        LimitSellOrder,
+        LimitBuyOrder,
+        MarketSellOrder,
+        MarketBuyOrder
+)
 from order import OrderStatus
-from exchange import Exchange
 
 '''
 Broker
@@ -120,8 +123,10 @@ class Broker:
 
 
 if __name__ == "__main__":
-    from xchg_test import TestExchange
-    t = Broker(TestExchange())
+    from xchg_test import RandomExchange
+    mybalance = Balance({'btc':100})
+    xchg = RandomExchange(mybalance)
+    t = Broker(xchg)
     t.sell(123, volume=10000)
     t.buy(800000, volume=1)
     t.market_sell(23)

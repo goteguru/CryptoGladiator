@@ -11,7 +11,7 @@ class AuthError(ExchangeError):
 class OrderError(ExchangeError):
     pass
 
-class Exchange:
+class ExchangeInterface:
     """ Abstract (interface) base class for specific exchange engines """
     supported_pairs = set()
 
