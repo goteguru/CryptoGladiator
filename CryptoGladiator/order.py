@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from tradingpair import TradingPair
+from .tradingpair import TradingPair
 
 """
 Smart Order class implementation with event callbacks
@@ -64,7 +64,7 @@ class Order():
     def __hash__(self):
         return self.order_id.__hash__()
 
-    def __repr__(self):         
+    def __repr__(self):
         return "<[{id}] {type} {volume} {base} @ {price} {quote} {status}>".format(
                 type = type(self).__name__,
                 volume = self.volume,
@@ -81,7 +81,7 @@ class Order():
 
     @status.setter
     def status(self,s):
-        if self.__status == s : return 
+        if self.__status == s : return
         self._ts('Status change: ' + str(s))
         self.__status = s
         try:
@@ -113,7 +113,7 @@ class LimitOrder(Order):
 
         self.__filled = amount
 
-    def __repr__(self):         
+    def __repr__(self):
         return "<[{id}] {type} {volume} {base} @ {price} {quote} {status} filled:{filled}>".format(
                 type = type(self).__name__,
                 volume = self.volume,
@@ -149,13 +149,13 @@ if __name__ == "__main__" :
     assert l1.status == OrderStatus.Open
 
     l1.filled = 0.5
-    assert l1.status == OrderStatus.Open 
+    assert l1.status == OrderStatus.Open
     assert l1.filled == 0.5
     l1.filled = 1
 
     teszt = []
 
-    def t(o): 
+    def t(o):
         teszt.append(o)
 
     l1.on_close = t
@@ -167,4 +167,3 @@ if __name__ == "__main__" :
     assert m1.status == OrderStatus.Pending
     m1.close(5555)
     assert m1.status == OrderStatus.Closed
-

@@ -1,4 +1,4 @@
-from bitstamp import client, BitstampError
+from bitstamp.client import Public as api, BitstampError
 from requests import HTTPError
 
 from order import OrderStatus, Order
@@ -32,7 +32,7 @@ class Bitstamp(ExchangeInterface):
             if 'username'   not in auth: raise AuthError("Username is mandatory.")
             if 'key'        not in auth: raise AuthError("Key is mandatory.")
             if 'secret'     not in auth: raise AuthError("Secret is mandatory.")
-            self.api = client.Trading(**auth)
+            self.api = api(**auth)
             self._get_supported_pairs()
             self.connected = True
         except (ValueError, BitstampError, HTTPError) as e:
@@ -89,7 +89,7 @@ class Bitstamp(ExchangeInterface):
 
         # sum of base transactions
         base = order.pair.base.url_form()
-        order.filled = sum [x[base] for x in result.transactions]
+        order.filled = sum([x[base] for x in result.transactions])
         return order
 
 

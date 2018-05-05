@@ -3,10 +3,10 @@ from random import gauss
 from uuid import uuid4 as uuid
 from datetime import datetime
 
-from order import OrderStatus, MarketSellOrder, MarketBuyOrder, LimitSellOrder, LimitBuyOrder
-from balance import Balance
-from exchange import ExchangeInterface, OrderError
-from tradingpair import TradingPair
+from ..order import OrderStatus, MarketSellOrder, MarketBuyOrder, LimitSellOrder, LimitBuyOrder
+from ..balance import Balance
+from ..tradingpair import TradingPair
+from .interface import ExchangeInterface, OrderError
 
 BTCUSD = TradingPair('btc/usd')
 

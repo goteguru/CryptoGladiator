@@ -2,7 +2,7 @@
 # Market Archive
 #
 
-from tradingpair import TradingPair
+from .tradingpair import TradingPair
 import time, datetime
 import numpy as np
 import pandas as pd

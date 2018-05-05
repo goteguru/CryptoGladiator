@@ -1,4 +1,4 @@
-from exchange.interface import ExchangeInterface
+from .interface import ExchangeInterface
 """
 Kraken exchange Broker implementation
 """

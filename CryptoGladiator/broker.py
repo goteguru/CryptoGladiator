@@ -1,5 +1,5 @@
-from balance import Balance
-from tradingpair import TradingPair
+from .balance import Balance
+from .tradingpair import TradingPair
 # from marketarchive import MarketArchive as Archive
 from order import (
         LimitSellOrder,
