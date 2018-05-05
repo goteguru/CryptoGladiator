@@ -4,7 +4,7 @@ from bitstamp import client
 from configparser import SafeConfigParser
 
 config = SafeConfigParser()
-config.read("cryptoboxer.conf")
+config.read("CryptoGladiator.conf")
 api_key = config.get("Bitstamp", "api_key")
 api_secret = config.get("Bitstamp", "api_secret")
 user = config.get("Bitstamp", "user")
@@ -40,14 +40,14 @@ class CryptoGladiator(cmd.Cmd) :
         minutes,secs = divmod(secs, 60)
         print(
                 'Running time: {0:.0f} day {1:.0f} hours {2:.0f} mins {3:.1f} secs'
-            .format(days,hours,minutes, secs) 
+            .format(days,hours,minutes, secs)
         )
         print("available trading pairs:", self.trading_pairs)
-    
+
     def do_quit(self,arg):
         print("Weapons down. Peace.")
         return True
-    
+
     def do_ticker(self,arg):
         '''Bitstamp ticker'''
         self.report( self.api.ticker() )
@@ -60,8 +60,8 @@ class CryptoGladiator(cmd.Cmd) :
 
     def do_pairs(self,arg):
         '''Get Trading pairs '''
-        for p in self._get_pairs(): 
-            print( "{name:>8} {url_symbol:>8} {description}".format(**p) ) 
+        for p in self._get_pairs():
+            print( "{name:>8} {url_symbol:>8} {description}".format(**p) )
 
 
     def do_balance(self,arg):
@@ -74,24 +74,24 @@ class CryptoGladiator(cmd.Cmd) :
         raw = self.api.user_transactions()
         transactions = [ s for s in raw if s['type']=='2' ]
         #self.table(transactions)
-        for l in transactions : 
+        for l in transactions :
             print(l)
-    
+
     def do_orders(self,arg):
         "Show Orders"
         base, quote = arg.strip().split("/")
         orders = self.api.open_orders(base, quote)
         self.table(orders)
-    
+
     def do_order(self,arg):
         '''Report single order '''
         try:
             order = self.api.order_status(arg)
         except client.BitstampError as e :
             print(type(e),":",e)
-        else: 
+        else:
             self.report(order)
-    
+
     def do_bids(self,arg):
         "Show (relevant) bids"
         lastprice = float(self.api.ticker()['last'])
@@ -102,12 +102,12 @@ class CryptoGladiator(cmd.Cmd) :
     def report(self,d):
         for k,v in d.items():
             print( "{key:>16}:{value!s:>16}".format(key=k,value=v))
-    
+
     def table(self,table):
         if len(table) == 0 :
             print ("none")
             return
-        
+
         keys = table[0].keys()
         header = "\t".join( keys )
         rowtemplate = "\t".join( [ '{'+k+'}' for k in keys] )
