@@ -1,7 +1,7 @@
 from .currency import Currency
 
 class _CurrencyContainer:
-    def __init__ ( self, currencies=None ):
+    def __init__(self, currencies=None):
         self._container = {}
 
         if currencies is None : return
@@ -107,6 +107,3 @@ class Balance(_CurrencyContainer):
     def add(self, currency, volume):
         self = self + Balance({currency:volume})
         return self
-
-
-

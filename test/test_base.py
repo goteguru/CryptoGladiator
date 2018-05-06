@@ -1,10 +1,11 @@
 from CryptoGladiator.balance import (Balance, BalanceDelta)
+from CryptoGladiator.currency import (ETH,USD,LTC,EUR,BTC,GNT)
 
 def test_balance():
     a=Balance()
     b=Balance({ETH:11, USD:88 })
     c=Balance({ETH:22, EUR:12, LTC:0 })
-    d=Balance({ETH:22, EUR:12, BTC:0})
+    d=Balance({EUR:12, ETH:22, BTC:0})
     s=Balance({ETH:33, EUR:12, USD:88})
 
     d1 = BalanceDelta({ETH:22, LTC:15, GNT:22 })

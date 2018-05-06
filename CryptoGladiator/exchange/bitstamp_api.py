@@ -1,9 +1,9 @@
 from bitstamp.client import Public as api, BitstampError
 from requests import HTTPError
 
-from order import OrderStatus, Order
-from balance import Balance
-from exchange.interface import ExchangeInterface, AuthError, OrderError
+from ..order import OrderStatus, Order
+from ..balance import Balance
+from .interface import ExchangeInterface, AuthError, OrderError
 
 """
 Bitstamp exchange Broker implementation
