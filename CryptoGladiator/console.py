@@ -2,6 +2,7 @@ import cmd, json, time
 import threading
 from bitstamp import client
 from configparser import SafeConfigParser
+import asincio
 
 config = SafeConfigParser()
 config.read("CryptoGladiator.conf")
@@ -117,4 +118,8 @@ class CryptoGladiator(cmd.Cmd) :
             print( rowtemplate.format(**row) )
 
 if __name__ == '__main__':
+
+    loop = asincio.get_event_loop()
+
+
     CryptoGladiator().cmdloop()

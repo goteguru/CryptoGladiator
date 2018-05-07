@@ -1,3 +1,15 @@
+"""
+Broker modul
+---------------
+
+The broker modul connects strategies to (real) exchanges. It's purpose is to start, stop, schedule strategies and run backtests.
+- handles balances and transactions,
+- handles strategies
+- connect and sync to exchange
+- exports BrokerApi
+"""
+
+
 from .balance import Balance
 from .tradingpair import TradingPair
 # from marketarchive import MarketArchive as Archive
@@ -10,14 +22,6 @@ from order import (
 from order import OrderStatus
 
 '''
-Broker
------------------
-
-- handles balances and transactions,
-- handles strategies
-- connect and sync to exchange
-- exports BrokerApi
-
 BrokerAPI
 ------------
 

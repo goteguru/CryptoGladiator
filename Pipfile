@@ -8,8 +8,7 @@ pytest = "*"
 python-language-server = "*"
 
 [packages]
-requests = "*"
-bitstampclient = "*"
+ccxt = "*"
 
 [requires]
 python_version = "3.6"
