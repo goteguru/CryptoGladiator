@@ -1,14 +1,11 @@
 import cmd, json, time
 import threading
-from bitstamp import client
-from configparser import SafeConfigParser
-import asincio
+from configparser import SafeConfigParser, NoSectionError
+import asyncio
+import sys
 
-config = SafeConfigParser()
-config.read("CryptoGladiator.conf")
-api_key = config.get("Bitstamp", "api_key")
-api_secret = config.get("Bitstamp", "api_secret")
-user = config.get("Bitstamp", "user")
+quit_requested = False
+mycounter = 0
 
 # dict(config.items("Bitstamp"))
 class CryptoGladiator(cmd.Cmd) :
@@ -16,8 +13,6 @@ class CryptoGladiator(cmd.Cmd) :
     intro = "CryptoBoxer %s. I'm waiting for you command."%version
     prompt =  "G> "
     ruler = '-'
-    #api = client.Public()
-    api = client.Trading(username=user, key=api_key, secret=api_secret)
     start_time = 0
     tick = 0
 
@@ -43,21 +38,21 @@ class CryptoGladiator(cmd.Cmd) :
                 'Running time: {0:.0f} day {1:.0f} hours {2:.0f} mins {3:.1f} secs'
             .format(days,hours,minutes, secs)
         )
-        print("available trading pairs:", self.trading_pairs)
+        print("counter:", mycounter)
 
     def do_quit(self,arg):
+        global quit_requested
+        quit_requested = True
         print("Weapons down. Peace.")
         return True
 
     def do_ticker(self,arg):
         '''Bitstamp ticker'''
-        self.report( self.api.ticker() )
+        print("ticker")
 
     def _get_pairs(self):
         '''Load trading pairs'''
-        pairs = filter(lambda r: r['trading'] == "Enabled", self.api.trading_pairs_info())
-        self.trading_pairs = [ p['url_symbol'] for p in pairs ]
-        return pairs
+        print("pairs")
 
     def do_pairs(self,arg):
         '''Get Trading pairs '''
@@ -67,31 +62,19 @@ class CryptoGladiator(cmd.Cmd) :
 
     def do_balance(self,arg):
         "Active ballance of the account"
-        balance = self.api.account_balance(base=None, quote=None)
-        self.report(balance)
+        print("balance")
 
     def do_transactions(self,arg):
         "Show my transactions"
-        raw = self.api.user_transactions()
-        transactions = [ s for s in raw if s['type']=='2' ]
-        #self.table(transactions)
-        for l in transactions :
-            print(l)
+        print("transactions")
 
     def do_orders(self,arg):
         "Show Orders"
-        base, quote = arg.strip().split("/")
-        orders = self.api.open_orders(base, quote)
-        self.table(orders)
+        print("orders")
 
     def do_order(self,arg):
         '''Report single order '''
-        try:
-            order = self.api.order_status(arg)
-        except client.BitstampError as e :
-            print(type(e),":",e)
-        else:
-            self.report(order)
+        print("orders")
 
     def do_bids(self,arg):
         "Show (relevant) bids"
@@ -117,9 +100,34 @@ class CryptoGladiator(cmd.Cmd) :
         for row in table :
             print( rowtemplate.format(**row) )
 
+
+async def counter():
+    global mycounter
+    while not quit_requested:
+        await asyncio.sleep(2)
+        mycounter += 2
+
 if __name__ == '__main__':
+    config = SafeConfigParser()
+    config.read("CryptoGladiator.conf")
+    try:
+        exlist = config.get("Main", "exchanges")
+        for exname in [x.strip() for x in exlist.split(',')]:
+            apikey = config.get(exname, "api_key")
+            secret = config.get(exname, "api_secret")
+            print (exname,apikey,secret)
 
-    loop = asincio.get_event_loop()
+    except (KeyError, NoSectionError) as e:
+        print(e)
+        sys.exit()
+    loop = asyncio.get_event_loop()
+    cmd = loop.run_in_executor(executor=None, func=CryptoGladiator().cmdloop)
+    futures = asyncio.gather(counter(),cmd)
+    print(futures)
+    try:
+        loop.run_until_complete(futures)
+    except ValueError:
+        print ("name error excepted")
 
-
-    CryptoGladiator().cmdloop()
+    finally:
+        loop.close()
