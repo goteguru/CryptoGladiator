@@ -28,3 +28,4 @@ Session.vim
 
 # config file
 cryptoboxer.conf
+*.conf
