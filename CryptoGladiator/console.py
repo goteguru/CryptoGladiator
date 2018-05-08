@@ -3,30 +3,32 @@ import threading
 from configparser import SafeConfigParser, NoSectionError
 import asyncio
 import sys
+import ccxt
 
 quit_requested = False
 mycounter = 0
 
 # dict(config.items("Bitstamp"))
 class CryptoGladiator(cmd.Cmd) :
+    '''
+    CryptoGladiator command line
+    '''
     version = 'v0.01 beta'
-    intro = "CryptoBoxer %s. I'm waiting for you command."%version
+    intro = "CryptoGladiator %s. I'm waiting for you command."%version
     prompt =  "G> "
     ruler = '-'
     start_time = 0
     tick = 0
 
+    def __init__(self, loop):
+        self.loop = loop
+        super().__init__()
+
     def preloop(self):
-        self._get_pairs()
-        def timer_callback():
-            self.tick += 1
-            self._bgprocess = threading.Timer(2,timer_callback)
-            self._bgprocess.start()
-        timer_callback()
         self.start_time = time.time()
 
     def postloop(self):
-        self._bgprocess.cancel()
+        pass
 
     def do_info(self, arg):
         'Report status information'
@@ -38,7 +40,6 @@ class CryptoGladiator(cmd.Cmd) :
                 'Running time: {0:.0f} day {1:.0f} hours {2:.0f} mins {3:.1f} secs'
             .format(days,hours,minutes, secs)
         )
-        print("counter:", mycounter)
 
     def do_quit(self,arg):
         global quit_requested
@@ -110,23 +111,34 @@ async def counter():
 if __name__ == '__main__':
     config = SafeConfigParser()
     config.read("CryptoGladiator.conf")
+    exchanges = {}
     try:
         exlist = config.get("Main", "exchanges")
         for exname in [x.strip() for x in exlist.split(',')]:
-            apikey = config.get(exname, "api_key")
-            secret = config.get(exname, "api_secret")
-            print (exname,apikey,secret)
+            ccxtname = config.get(exname, "exchange")
+            exchanges[ccxtname] = getattr(ccxt, ccxtname)()
+            exchanges[ccxtname].apiKey = config.get(exname, "api_key")
+            exchanges[ccxtname].secret = config.get(exname, "api_secret")
+
+    except AttributeError as e:
+        print (e)
+        sys.exit()
 
     except (KeyError, NoSectionError) as e:
         print(e)
         sys.exit()
+
+    #b = exchanges['bittrex'].fetch_balance()
+
     loop = asyncio.get_event_loop()
-    cmd = loop.run_in_executor(executor=None, func=CryptoGladiator().cmdloop)
+    cmd = loop.run_in_executor(executor=None, func=CryptoGladiator(loop).cmdloop)
     futures = asyncio.gather(counter(),cmd)
     print(futures)
     try:
         loop.run_until_complete(futures)
-    except ValueError:
+        print(futures.result())
+
+    except KeyboardInterrupt:
         print ("name error excepted")
 
     finally:
