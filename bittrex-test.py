@@ -1,6 +1,13 @@
 
-from bittrex.bittrex import Bittrex, API_V1_1
+import ccxt.async as ccxt
+import asyncio
 
-bittrex = Bittrex("c7f58b74b3d74895af1a428e805dc7c2", "eb746744efeb4a5190161c6ad60b1338", api_version=API_V1_1)
 
-print (bittrex.get_balances())
+e = ccxt.bitstamp()
+
+l = asyncio.get_event_loop()
+res = l.run_until_complete(e.fetch_ticker('BTC/USD'))
+l.run_until_complete(e.close())
+print (res)
+#print (e.markets)
+#print (e.fetch_balance())

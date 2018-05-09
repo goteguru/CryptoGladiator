@@ -9,17 +9,25 @@ The broker modul connects strategies to (real) exchanges. It's purpose is to sta
 - exports BrokerApi
 """
 
+import asyncio
+import threading
+import time
+from functools import partial
+import ccxt.async as ccxt
 
 from .balance import Balance
 from .tradingpair import TradingPair
 # from marketarchive import MarketArchive as Archive
-from order import (
+from .order import (
         LimitSellOrder,
         LimitBuyOrder,
         MarketSellOrder,
         MarketBuyOrder
 )
-from order import OrderStatus
+from .order import OrderStatus
+
+class BrokerError(Exception):
+    pass
 
 '''
 BrokerAPI
@@ -45,20 +53,98 @@ class BrokerAPI:
 
 class Broker:
     """Main broker object with balance management and exchange tracking"""
-    market = None   # Market archive
+    archive = None  # Market archive
+    exchanges = {}  # ccxt exchanges {'exchgname': exch_object}
+    job_loop = None     # job processor async loop
 
-    def __init__(self, exchange):
+    def __init__(self):
         """Create new broker"""
-        self.trading_pairs = set()
-        self.default_pair = TradingPair("btc/usd")
-        # balance available for trading
+
         self.free_balance = Balance()
         # Orders dictionary {orderid: Order}
         self.orders = {}
         # Default strategy :: Strategy
         self.strategy = None
-        # exchange agent
-        self.exchange = exchange
+        # job_processor shutdown event
+        self.shutdown = threading.Event()
+
+    def __enter__(self):
+        self.start()
+        return self
+
+    def __exit__(self, *args):
+        self.stop()
+        # TODO: close exchanges
+
+    def start(self):
+        '''start job processor'''
+        self.job_thread = threading.Thread(
+            target=self.__job_processor,
+            name="job_processor"
+            )
+        self.job_thread.start()
+
+    def stop(self):
+        '''stop job processor'''
+        self.shutdown.set()
+
+    def __job_processor(self):
+        '''
+        Thread function to process background jobs
+        All ccxt market query must be called from
+        this thread loop.
+        TODO: separate thread for each exchanges.
+        '''
+        self.job_loop = asyncio.new_event_loop()
+        print("jobprocessor started",self.job_loop)
+        asyncio.set_event_loop(self.job_loop)
+        async def quit():
+            while not self.shutdown.is_set():
+                await asyncio.sleep(1)
+                print("jobprocessor running",self.job_loop)
+            self.job_loop.stop()
+
+        try:
+            self.job_loop.run_until_complete(quit())
+
+        except BrokerError as be:
+            print("brokererror:", str(e))
+
+        finally:
+            print("jobprocessor stopped.")
+            self.job_loop.close()
+            self.shutdown.set()
+
+    def run_on_job_processor(self, func):
+        '''schedule function exchange in a thread loop'''
+        if not self.job_loop:
+            time.sleep(1)
+            if not self.job_loop:
+                raise RuntimeError("Job processor is not started.")
+
+        future = asyncio.run_coroutine_threadsafe(func, self.job_loop)
+        return future
+
+    def exchange_list(self):
+        return self.exchanges.keys()
+
+    def exchange_open(self, xchg_name, config = {}):
+        try:
+            self.exchanges[xchg_name] = getattr(ccxt, xchg_name)(config)
+        except AttributeError as e:
+            raise BrokerError("Unknown exchange: ", str(xchg_name))
+
+    def exchange_call(self, xchg_name, function_name, *args, **kwargs):
+        '''schedule function call for an exchange in a thread loop'''
+
+        try:
+            coro = getattr(self.exchanges[xchg_name], function_name)(*args, **kwargs)
+            return self.run_in_job_processor(coro)
+        except AttributeError as e:
+            raise BrokerError("Invalid ccxt method name: " + str(function_name))
+
+    def ticker(self,xchg_name):
+        self.exchange_call(xchg_name, "fetch_ticker", 'ETH/BTC')
 
     def API(self):
         """Export Public API functions"""
