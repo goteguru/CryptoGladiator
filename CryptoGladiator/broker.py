@@ -83,6 +83,8 @@ class Broker:
             name="job_processor"
             )
         self.job_thread.start()
+        while not self.job_loop:
+            pass # block while loop start
 
     def stop(self):
         '''stop job processor'''
@@ -96,31 +98,24 @@ class Broker:
         TODO: separate thread for each exchanges.
         '''
         self.job_loop = asyncio.new_event_loop()
-        print("jobprocessor started",self.job_loop)
+        print("jobprocessor started.")
         asyncio.set_event_loop(self.job_loop)
         async def quit():
             while not self.shutdown.is_set():
                 await asyncio.sleep(1)
-                print("jobprocessor running",self.job_loop)
+                print("jobprocessor is running.")
             self.job_loop.stop()
 
-        try:
-            self.job_loop.run_until_complete(quit())
+        self.job_loop.run_until_complete(quit())
 
-        except BrokerError as be:
-            print("brokererror:", str(e))
-
-        finally:
-            print("jobprocessor stopped.")
-            self.job_loop.close()
-            self.shutdown.set()
+        print("jobprocessor stopped.")
+        self.job_loop.close()
+        self.shutdown.set()
 
     def run_on_job_processor(self, func):
         '''schedule function exchange in a thread loop'''
         if not self.job_loop:
-            time.sleep(1)
-            if not self.job_loop:
-                raise RuntimeError("Job processor is not started.")
+            raise RuntimeError("Job processor is not started.")
 
         future = asyncio.run_coroutine_threadsafe(func, self.job_loop)
         return future
