@@ -7,23 +7,39 @@ import ccxt.async as ccxt
 async def proba():
     await asyncio.sleep(1)
     print ("job thread:",threading.current_thread().getName())
-    return "ok"
 
-print ("main:",threading.current_thread())
+print ("main:",threading.current_thread().getName())
+
+async def longwait():
+    await asyncio.sleep(10)
 
 async def poloniex_ticker():
-    poloniex = ccxt.poloniex()
+    poloniex = ccxt.kraken()
+
     print(await poloniex.fetch_ticker('ETH/BTC'))
     await poloniex.close()
+    raise Exception("Bakker 23423")
+    print("miért nincs exception?")
+    return "kaka"
 
 with Broker() as b:
     print("register job")
-    r = b.run_on_job_processor(proba())
+    b.exchange_open("kraken")
+
+    print("exchange list:",b.exchange_list())
+    r = b.exchange_call("kraken","fetch_ticker","ETH/BTC")
+    print("this is r: " ,r)
     print("queued")
     print(r.result())
     print("result got")
 
-    print( b.run_on_job_processor(poloniex_ticker()))
+    try:
+        #print("processor returns:", b.run_on_job_processor(poloniex_ticker()))
+        time.sleep(4)
+    except Exception as e:
+        print ("!!!!!!!!!!!! - gotcha")
+
+
 
 
 #with Broker() as broker:

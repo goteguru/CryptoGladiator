@@ -104,6 +104,8 @@ class Broker:
             while not self.shutdown.is_set():
                 await asyncio.sleep(1)
                 print("jobprocessor is running.")
+            closers = [m.close() for m in self.exchanges.values()]
+            await asyncio.gather(*closers)
             self.job_loop.stop()
 
         self.job_loop.run_until_complete(quit())
@@ -117,13 +119,17 @@ class Broker:
         if not self.job_loop:
             raise RuntimeError("Job processor is not started.")
 
-        future = asyncio.run_coroutine_threadsafe(func, self.job_loop)
-        return future
+        return asyncio.run_coroutine_threadsafe(func, self.job_loop)
 
     def exchange_list(self):
         return self.exchanges.keys()
 
     def exchange_open(self, xchg_name, config = {}):
+        self.run_on_job_processor(self._a_exchange_open(xchg_name,config))
+
+    async def _a_exchange_open(self, xchg_name, config = {}):
+        if xchg_name in self.exchanges:
+            return self.exchanges[xchg_name]
         try:
             self.exchanges[xchg_name] = getattr(ccxt, xchg_name)(config)
         except AttributeError as e:
@@ -133,8 +139,19 @@ class Broker:
         '''schedule function call for an exchange in a thread loop'''
 
         try:
-            coro = getattr(self.exchanges[xchg_name], function_name)(*args, **kwargs)
-            return self.run_in_job_processor(coro)
+            async def runner():
+                if xchg_name not in self.exchanges:
+                    await self._a_exchange_open(xchg_name)
+
+                xchg = self.exchanges[xchg_name]
+                corofn = getattr(xchg, function_name)
+
+                print("this is me:",await xchg.fetch_ticker('ETH/BTC'))
+                #wait xchg.close()
+                #print("------> i'm:",threading.current_thread().getName())
+                #print( await corofn(*args, **kwargs) )
+
+            return self.run_on_job_processor(runner())
         except AttributeError as e:
             raise BrokerError("Invalid ccxt method name: " + str(function_name))
 
