@@ -114,8 +114,12 @@ class Broker:
         self.job_loop.close()
         self.shutdown.set()
 
-    def run_on_job_processor(self, func):
-        '''schedule function exchange in a thread loop'''
+    def arun(self, func):
+        '''
+        Async run. Schedule async function in a thread loop.
+        Returns a Promise
+        '''
+
         if not self.job_loop:
             raise RuntimeError("Job processor is not started.")
 
@@ -125,13 +129,14 @@ class Broker:
         return self.exchanges.keys()
 
     def exchange_open(self, xchg_name, config = {}):
-        self.run_on_job_processor(self._a_exchange_open(xchg_name,config))
+        self.arun(self._a_exchange_open(xchg_name,config))
 
     async def _a_exchange_open(self, xchg_name, config = {}):
-        if xchg_name in self.exchanges:
-            return self.exchanges[xchg_name]
         try:
-            self.exchanges[xchg_name] = getattr(ccxt, xchg_name)(config)
+            if not xchg_name in self.exchanges:
+                self.exchanges[xchg_name] =
+                    getattr(ccxt, xchg_name)(config)
+            return self.exchanges[xchg_name]
         except AttributeError as e:
             raise BrokerError("Unknown exchange: ", str(xchg_name))
 
@@ -151,7 +156,7 @@ class Broker:
                 #print("------> i'm:",threading.current_thread().getName())
                 #print( await corofn(*args, **kwargs) )
 
-            return self.run_on_job_processor(runner())
+            return self.arun(runner())
         except AttributeError as e:
             raise BrokerError("Invalid ccxt method name: " + str(function_name))
         except Exception as e:

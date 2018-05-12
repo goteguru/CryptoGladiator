@@ -3,7 +3,7 @@ import asyncio
 import time
 import threading
 import ccxt.async as ccxt
-    #import ccxt.base.errors as ccxtbug
+from ccxt.base.errors import ExchangeError
 
 async def proba():
     await asyncio.sleep(1)
@@ -40,7 +40,7 @@ with Broker() as b:
 
     #TODO: hogyan fogjuk el ezt? :ccxt.base.errors.ExchangeNotAvailable as e:
     # ccxt melyik modulja?
-    except Exception as e:
+    except ExchangeError as e:
         print(type(e))
         print ("!!!!!!!!!!!! - gotcha. this was an exception.: " , str(e))
 
