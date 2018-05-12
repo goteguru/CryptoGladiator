@@ -154,6 +154,8 @@ class Broker:
             return self.run_on_job_processor(runner())
         except AttributeError as e:
             raise BrokerError("Invalid ccxt method name: " + str(function_name))
+        except Exception as e:
+            print ("hahah", e)
 
     def ticker(self,xchg_name):
         self.exchange_call(xchg_name, "fetch_ticker", 'ETH/BTC')

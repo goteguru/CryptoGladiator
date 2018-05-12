@@ -3,6 +3,7 @@ import asyncio
 import time
 import threading
 import ccxt.async as ccxt
+    #import ccxt.base.errors as ccxtbug
 
 async def proba():
     await asyncio.sleep(1)
@@ -26,21 +27,22 @@ with Broker() as b:
     print("register job")
     b.exchange_open("kraken")
 
-    print("exchange list:",b.exchange_list())
-    r = b.exchange_call("kraken","fetch_ticker","ETH/BTC")
-    print("this is r: " ,r)
-    print("queued")
-    print(r.result())
-    print("result got")
-
     try:
+        print("exchange list:",b.exchange_list())
+        r = b.exchange_call("kraken","fetch_ticker","ETH/BTC")
+        print("this is r: " ,r)
+        print("queued")
+        print(r.result())
+        print("result got")
+
         #print("processor returns:", b.run_on_job_processor(poloniex_ticker()))
         time.sleep(4)
+
+    #TODO: hogyan fogjuk el ezt? :ccxt.base.errors.ExchangeNotAvailable as e:
+    # ccxt melyik modulja?
     except Exception as e:
-        print ("!!!!!!!!!!!! - gotcha")
-
-
-
+        print(type(e))
+        print ("!!!!!!!!!!!! - gotcha. this was an exception.: " , str(e))
 
 #with Broker() as broker:
 #    broker.exchange_open("bitstamp")
