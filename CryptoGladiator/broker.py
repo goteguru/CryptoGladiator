@@ -12,8 +12,6 @@ The broker modul connects strategies to (real) exchanges. It's purpose is to sta
 import asyncio
 import threading
 import time
-from functools import partial
-import ccxt.async as ccxt
 
 from .balance import Balance
 from .tradingpair import TradingPair
@@ -25,7 +23,8 @@ from .order import (
         MarketBuyOrder
 )
 from .order import OrderStatus
-from .erros import BrokerError
+from .errors import BrokerError
+from .jobmanager import JobManager
 
 '''
 BrokerAPI
@@ -62,20 +61,9 @@ class Broker:
         self.orders = {}
         # Default strategy :: Strategy
         self.strategy = None
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *args):
-        "stop all exchange threads"
-        for ex in self.exchanges:
-        ex.stop()
-
-    def exchange_list(self):
-        return self.exchanges.keys()
-
-    def ticker(self,xchg_name):
-        self.exchange_call(xchg_name, "fetch_ticker", 'ETH/BTC')
+        # start JobManager
+        self.manager = JobManager()
+        self.manager.start()
 
     def API(self):
         """Export Public API functions"""
@@ -127,27 +115,9 @@ class Broker:
         """Get current available (free) balance"""
         return self.balance
 
-    def get_balance(self):
+    def fetch_balance(self):
         """Get current managed balance"""
+
         return self.balance
 
     ### Background tasks ###
-
-    def sync(self):
-        # sync orders
-        for o in self.orders:
-            if o.status in [OrderStatus.Failed, OrderStatus.Pending]:
-                self.exchange.update_order(self, o)
-
-        # sync balance
-        self.balance = self.exchange.get_balance()
-
-
-if __name__ == "__main__":
-    from xchg_test import RandomExchange
-    mybalance = Balance({'btc':100})
-    xchg = RandomExchange(mybalance)
-    t = Broker(xchg)
-    t.sell(123, volume=10000)
-    t.buy(800000, volume=1)
-    t.market_sell(23)

@@ -1,8 +1,11 @@
-[Bitstamp]
-api_key = yourkey 
-api_secret = yoursecret
-user = youruserid
-
-[BitTrex]
+[bitstamp]
 api_key = yourkey
-api_secret = yoursecret
+secret = yoursecret
+user = 123456
+
+[bittrex]
+api_key = yourtrexkey
+secret = yourtrexsecret
+
+[Main]
+exchanges = bitstamp, bittrex
