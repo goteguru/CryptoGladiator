@@ -80,7 +80,11 @@ class CryptoGladiator(cmd.Cmd) :
 
     def do_markets(self,arg):
         '''Get Trading pairs '''
-        print(self.exchange.markets)
+        try:
+            for m in self.exchange.call("fetch_markets"):
+                self.report({k:v for k,v in m.items() if k is not 'info'})
+        except ExchangeError as e:
+            print(e)
         #print( "{name:>8} {url_symbol:>8} {description}".format(**p) )
 
     def do_ticker(self,arg):
@@ -94,7 +98,17 @@ class CryptoGladiator(cmd.Cmd) :
 
     def do_balance(self,arg):
         "Active balance of the account"
-        print("balance")
+        if arg not in ("free", "used", "total"):
+            arg = "free"
+
+        try:
+            result = self.exchange.call("fetch_balance")
+        except ExchangeError as e:
+            print(e)
+        else:
+            print(arg," balance:")
+            self.report(result[arg])
+
 
     def do_transactions(self,arg):
         "Show my transactions"
