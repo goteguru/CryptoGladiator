@@ -27,10 +27,10 @@ class Exchange():
         # run __init__ exchange on the new event loop
         try:
             async def initxchg():
-                return getattr(ccxt, self.name)(self.config)
+                xchg = getattr(ccxt, self.name)(self.config)
+                asyncio.ensure_future(xchg.load_markets())
+                return xchg
             self.exchange = self.manager.run(initxchg()).result()
-            self.symbols = self.exchange.symbols
-            self.markets = self.exchange.markets
 
         except AttributeError as e:
             raise BrokerError("Unknown exchange: "+ str(self.name))
@@ -143,7 +143,7 @@ class JobManager():
         for t in self.jobs:
             log.debug("job %s",t)
             job = {}
-            job['error'] = str(t.exception())[:30]
+            job['error'] = t.exception()
             job['task'] = t
             joblist.append(job)
         return joblist

@@ -1,5 +1,4 @@
 import cmd, json, time
-import threading
 from configparser import SafeConfigParser, NoSectionError
 import asyncio
 import sys
@@ -7,7 +6,8 @@ import ccxt
 from CryptoGladiator.broker import Broker
 from CryptoGladiator.errors import BrokerError
 import logging
-from ccxt import ExchangeError
+from ccxt import ExchangeError, NetworkError
+import os
 
 log = logging.getLogger('Broker')
 log.setLevel(logging.DEBUG)
@@ -37,18 +37,24 @@ class CryptoGladiator(cmd.Cmd) :
     def preloop(self):
         self.start_time = time.time()
         config = SafeConfigParser()
-        config.read("CryptoGladiator.conf")
-        exlist = config.get("Main", "exchanges")
-        mngr = self.broker.manager
-        for exname in [x.strip() for x in exlist.split(',')]:
-            xchgconfig = dict(config.items(exname))
-            self.exchange = mngr.get_exchange(exname, xchgconfig)
+        try:
+            config.read("CryptoGladiator.conf")
+            exlist = config.get("Main", "exchanges")
+            mngr = self.broker.manager
+            for exname in [x.strip() for x in exlist.split(',')]:
+                xchgconfig = dict(config.items(exname))
+                self.exchange = mngr.get_exchange(exname, xchgconfig)
+        except NoSectionError:
+            log.error("No main config section. See example file.")
 
     def postloop(self):
         self.broker.manager.stop()
 
     def do_use(self, arg):
-        "Change default exchange. use <exchange>"
+        """
+        use <exchange>
+        Change default exchange.
+        """
         try:
             self.exchange = self.broker.manager.get_exchange(arg.strip())
         except BrokerError as e:
@@ -64,19 +70,43 @@ class CryptoGladiator(cmd.Cmd) :
                 'Running time: {0:.0f} day {1:.0f} hours {2:.0f} mins {3:.1f} secs'
             .format(days,hours,minutes, secs)
         )
-        print (f"Default exchange: {self.exchange.name}")
+        print (f"Active exchange: {self.exchange.name}")
+        xlist = ", ".join(self.broker.manager.exchanges.keys())
+        print (f"Loaded exchanges: {xlist}")
 
     def do_jobs(self,arg):
         'list active jobs'
-        print(self.broker.manager.list_jobs())
+        jobs = self.broker.manager.list_jobs()
+        for j in jobs:
+            if j['error'] is not None:
+                print ("!", j['task'], str(j['error'])[:50])
+            else:
+                print(" ", j['task'])
 
     def do_symbols(self,arg):
-        result = self.exchange.symbols
+        result = self.exchange.exchange.symbols
         print(result)
+
+    def do_currencies(self,arg):
+        '''
+        Report available currencies.
+        '''
+        curlist = ",".join(self.exchange.exchange.currencies.keys())
+        print("currencies:", curlist)
 
     def do_quit(self,arg):
         print("Weapons down. Peace.")
         return True
+
+    def do_reload(self,arg):
+        '''
+        Force reload default exchange (market info + currencies)
+        '''
+        try:
+            print (self.exchange.call("load_markets", True))
+        except ExchangeError as e:
+            print(e)
+        #print( "{name:>8} {url_symbol:>8} {description}".format(**p) )
 
     def do_markets(self,arg):
         '''Get Trading pairs '''
@@ -89,15 +119,18 @@ class CryptoGladiator(cmd.Cmd) :
 
     def do_ticker(self,arg):
         '''Get ticker '''
-        ticker = arg.strip()
+        ticker = arg.strip().upper()
         try:
             self.report(self.exchange.call("fetch_ticker",ticker))
-        except ExchangeError as e:
+        except (ExchangeError, NetworkError) as e:
             print(e)
         #print( "{name:>8} {url_symbol:>8} {description}".format(**p) )
 
     def do_balance(self,arg):
-        "Active balance of the account"
+        '''
+        balance [free|used|total]
+        Active, reserved and total balance of the account.
+        '''
         if arg not in ("free", "used", "total"):
             arg = "free"
 
@@ -115,33 +148,70 @@ class CryptoGladiator(cmd.Cmd) :
         print("transactions")
 
     def do_orders(self,arg):
-        "Show Orders"
-        print("orders")
+        '''
+        orders [open]
+        Show (open) orders.
+        '''
+        try:
+            result = self.exchange.call("fetch_open_orders")
+        except (ExchangeError, NetworkError) as e:
+            log.error(e)
+        else:
+            self.table(result, without=["info","fee","average","timestamp"])
 
     def do_order(self,arg):
-        '''Report single order '''
-        print("orders")
-
-    def do_bids(self,arg):
-        print("bids")
+        '''
+        order <orderid>
+        Report single order
+        '''
+        oid = arg.strip()
+        try:
+            result = self.exchange.call("fetch_open_order", oid)
+        except (ExchangeError, NetworkError) as e:
+            log.error(e)
+        else:
+            self.report(result)
 
     def report(self,d):
         for k,v in d.items():
             print( "{key:>16}:{value!s:>16}".format(key=k,value=v))
 
-    def table(self,table):
+    def table(self, table, without=[]):
+        """Display list of dicts
+        :table:     - list of dictionaries
+        :without:   - list of masked (unneeded) keys
+        """
         if len(table) == 0 :
-            print ("none")
+            print ("No result")
             return
 
-        keys = table[0].keys()
-        header = "\t".join( keys )
-        rowtemplate = "\t".join( [ '{'+k+'}' for k in keys] )
+        # detect terminal size
+        trows, tcolumns = map(int, os.popen('stty size', 'r').read().split())
+        fields = [f for f in table[0].keys() if f not in without]
 
-        print(header)
+        # detect column widths
+        widths = {k:0 for k in fields}
+        for row in table:
+            for key in fields:
+                l = len(str(row[key]))
+                if widths[key] < l:
+                    widths[key] = min(30,l)
+        log.debug("widths:%s", widths)
+        log.debug("term:%s sumwidth:%s", tcolumns, sum(widths.values()))
+
+        # normalise widths
+        maxw = sum(widths.values()) + len(fields)
+        if maxw > tcolumns:
+            widths = {k: int(v/maxw*tcolumns) for k,v in widths.items()}
+
+        log.debug("term:%s sumwidth:%s", tcolumns, sum(widths.values()))
+
+        # display
+        rowtemplate = "|".join(['{'+k+'!s:>'+str(w)+'.'+str(w)+'}' for k,w in widths.items()])
+        log.debug("rowtemplate:%s", rowtemplate)
+        print(rowtemplate.format(**{f:f for f in fields}))
         for row in table :
-            print( rowtemplate.format(**row) )
-
+            print(rowtemplate.format(**row))
 
 if __name__ == '__main__':
     CryptoGladiator().cmdloop()
